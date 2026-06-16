@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>猛鬼宿舍</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fff;font-family:'Microsoft YaHei',sans-serif;overflow:hidden;user-select:none;touch-action:none}
+#gameCanvas{display:block;margin:0 auto}
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-around;align-items:center;padding:10px 16px;background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 100%);z-index:10;font-size:15px;font-weight:bold;pointer-events:none}
+.hud-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hud-label{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:1px}
+.hud-value{font-size:20px;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.5)}
+.hud-value.red{color:#ff4444;text-shadow:0 0 8px rgba(255,68,68,.5)}
+.hud-value.green{color:#44ff88;text-shadow:0 0 8px rgba(68,255,136,.5)}
+/* Tower panel */
+#towerPanel{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,.95);border-top:1px solid #333;padding:8px 12px;display:flex;justify-content:space-around;z-index:10;gap:6px}
+.tower-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:8px;border:1px solid #333;background:#1a1a1a;cursor:pointer;transition:all .15s;color:#fff;font-size:11px;min-width:0}
+.tower-btn:hover,.tower-btn:active{border-color:#ffd700;background:#222}
+.tower-btn.selected{border-color:#ffd700;background:#2a2a00;box-shadow:0 0 10px rgba(255,215,0,.3)}
+.tower-btn .icon{font-size:22px;margin-bottom:3px}
+.tower-btn .name{font-size:10px;opacity:.8}
+.tower-btn .cost{color:#ffd700;font-size:10px;font-weight:bold;margin-top:2px}
+.tower-btn .desc{font-size:9px;opacity:.5;margin-top:2px}
+.tower-btn:disabled{opacity:.35;cursor:not-allowed;border-color:#222}
+/* Game overlay screens */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center;padding:20px}
+#overlay h1{font-size:36px;color:#fff;margin-bottom:10px;text-shadow:0 0 20px rgba(255,68,68,.6)}
+#overlay h1.win{color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,.6)}
+#overlay .subtitle{font-size:14px;opacity:.6;margin-bottom:30px}
+#overlay .stat-row{display:flex;gap:30px;margin-bottom:30px}
+#overlay .stat{text-align:center}
+#overlay .stat-num{font-size:32px;font-weight:bold;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.4)}
+#overlay .stat-label{font-size:12px;opacity:.5;margin-top:4px}
+#overlay .btn{display:inline-block;padding:14px 40px;background:#ffd700;color:#000;font-size:16px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;margin:6px;transition:all .2s}
+#overlay .btn:hover{background:#ffec8b;transform:scale(1.05)}
+#overlay .btn.secondary{background:#333;color:#fff}
+#overlay .btn.secondary:hover{background:#444}
+/* Wave announce */
+#waveAnnounce{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:bold;color:#ff4444;text-shadow:0 0 20px rgba(255,68,68,.8);z-index:50;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center}
+#waveAnnounce.show{opacity:1}
+/* Coin popup */
+@keyframes coinPop{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-40px) scale(.7)}}
+.coin-popup{position:fixed;font-size:16px;font-weight:bold;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.6);pointer-events:none;z-index:60;animation:coinPop 1s ease-out forwards}
+/* Damage flash */
+@keyframes dmgFlash{0%,100%{background:transparent}50%{background:rgba(255,0,0,.25)}}
+body.damage-flash{animation:dmgFlash .3s ease-out}
+/* HP bar on room */
+#roomHpBar{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);width:200px;height:16px;background:#222;border:2px solid #444;border-radius:8px;overflow:hidden;z-index:10;pointer-events:none}
+#roomHpFill{height:100%;background:linear-gradient(90deg,#ff4444,#ff8844);transition:width .3s;border-radius:6px}
+/* Help tip */
+#tip{position:fixed;bottom:75px;right:12px;font-size:11px;opacity:.4;pointer-events:none;z-index:10;text-align:right;line-height:1.6}
+</style>
+</head>
+<body>
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-item"><span class="hud-label">波次</span><span class="hud-value red" id="hWave">1</span></div>
+  <div class="hud-item"><span class="hud-label">金币</span><span class="hud-value" id="hCoin">50</span></div>
+  <div class="hud-item"><span class="hud-label">血量</span><span class="hud-value green" id="hHp">100</span></div>
+  <div class="hud-item"><span class="hud-label">击杀</span><span class="hud-value" id="hKill">0</span></div>
+</div>
+
+<!-- Tower Panel -->
+<div id="towerPanel">
+  <div class="tower-btn" onclick="selectTower(0)" id="btn0">
+    <span class="icon">🔥</span><span class="name">火炮</span><span class="cost" id="cost0">25</span><span class="desc">单体高伤害</span>
+  </div>
+  <div class="tower-btn" onclick="selectTower(1)" id="btn1">
+    <span class="icon">❄️</span><span class="name">冰霜</span><span class="cost" id="cost1">30</span><span class="desc">群体减速</span>
+  </div>
+  <div class="tower-btn" onclick="selectTower(2)" id="btn2">
+    <span class="icon">⚡</span><span class="name">电网</span><span class="cost" id="cost2">40</span><span class="desc">范围电击</span>
+  </div>
+  <div class="tower-btn" onclick="selectTower(3)" id="btn3">
+    <span class="icon">🛡️</span><span class="name">加固</span><span class="cost" id="cost3">20</span><span class="desc">修复血量</span>
+  </div>
+  <div class="tower-btn" onclick="selectTower(4)" id="btn4">
+    <span class="icon">💀</span><span class="name">诅咒</span><span class="cost" id="cost4">50</span><span class="desc">降低敌防</span>
+  </div>
+</div>
+
+<!-- Room HP bar -->
+<div id="roomHpBar"><div id="roomHpFill" style="width:100%"></div></div>
+
+<!-- Wave announce -->
+<div id="waveAnnounce"></div>
+
+<!-- Tip -->
+<div id="tip">点击地面放置炮塔<br>消灭猛鬼获取金币<br>保护宿舍不被攻破</div>
+
+<!-- Overlay -->
+<div id="overlay" style="display:none">
+  <h1 id="ovTitle">游戏结束</h1>
+  <p class="subtitle" id="ovSubtitle">宿舍被猛鬼攻破了</p>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-num" id="ovWave">0</div><div class="stat-label">存活波次</div></div>
+    <div class="stat"><div class="stat-num" id="ovKill">0</div><div class="stat-label">击杀总数</div></div>
+    <div class="stat"><div class="stat-num" id="ovCoin">0</div><div class="stat-label">获得金币</div></div>
+  </div>
+  <button class="btn" onclick="restartGame()">再来一局</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ========== CONSTANTS ==========
+const TOWER_TYPES = [
+  { name:'火炮', icon:'🔥', cost:25, range:130, damage:35, cooldown:60, color:'#ff6600', type:'single' },
+  { name:'冰霜', icon:'❄️', cost:30, range:120, damage:12, cooldown:50, cooldownMax:180, color:'#44aaff', type:'slow', slowFactor:.35, slowDur:90 },
+  { name:'电网', icon:'⚡', cost:40, range:110, damage:18, cooldown:70, color:'#ffff00', type:'aoe', aoeRadius:70 },
+  { name:'加固', icon:'🛡️', cost:20, range:0,  damage:-30, cooldown:90, color:'#44ff88', type:'heal' },
+  { name:'诅咒', icon:'💀', cost:50, range:100, damage:8,  cooldown:80, color:'#cc44ff', type:'debuff', debuffFactor:.5, debuffDur:120 },
+];
+const TOWER_COSTS = [25,30,40,20,50];
+
+// ========== GAME STATE ==========
+let canvas, ctx, W, H, roomX, roomY, roomW, roomH;
+let coins = 50, roomHp = 100, maxRoomHp = 100;
+let wave = 1, kills = 0, totalCoinsEarned = 0;
+let selectedTower = -1;
+let towers = [], enemies = [], projectiles = [], particles = [], effects = [];
+let gameRunning = false, gameOver = false;
+let waveTimer = 0, betweenWaves = true, betweenWaveTimer = 0;
+let lastTime = 0;
+
+// Enemy spawn queue
+let spawnQueue = [], spawnTimer = 0;
+
+// Mouse/touch
+let mouseX = 0, mouseY = 0;
+let canPlace = false;
+
+// Ghost path from left/right edges toward room
+const SPAWN_SIDES = ['left','right','top'];
+
+// ========== INIT ==========
+function init() {
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Mouse events
+  canvas.addEventListener('mousemove', e => {
+    mouseX = e.offsetX; mouseY = e.offsetY;
+    updateCanPlace();
+  });
+  canvas.addEventListener('click', e => {
+    if (selectedTower >= 0 && canPlace) placeTower(e.offsetX, e.offsetY);
+  });
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    mouseX = t.clientX - rect.left; mouseY = t.clientY - rect.top;
+    updateCanPlace();
+    if (selectedTower >= 0 && canPlace) placeTower(mouseX, mouseY);
+  }, {passive:false});
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') selectTower(-1);
+    if (e.key >= '1' && e.key <= '5') selectTower(parseInt(e.key)-1);
+  });
+
+  updateUI();
+  startGame();
+  requestAnimationFrame(gameLoop);
+}
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+  const roomSize = Math.min(W * .38, H * .55);
+  roomW = roomSize;
+  roomH = roomSize * .7;
+  roomX = (W - roomW) / 2;
+  roomY = (H - roomH) / 2 + 20;
+}
+
+function startGame() {
+  coins = 50; roomHp = 100; maxRoomHp = 100;
+  wave = 1; kills = 0; totalCoinsEarned = 0;
+  towers = []; enemies = []; projectiles = []; particles = []; effects = [];
+  gameRunning = true; gameOver = false;
+  betweenWaves = true; betweenWaveTimer = 180;
+  spawnQueue = [];
+  document.getElementById('overlay').style.display = 'none';
+  updateUI();
+  announceWave(1);
+}
+
+// ========== WAVE SYSTEM ==========
+function generateWave(w) {
+  const count = 3 + w * 2;
+  const queue = [];
+  for (let i = 0; i < count; i++) {
+    const hp = 30 + w * 15 + Math.floor(Math.random() * w * 8);
+    const speed = .8 + w * .06 + Math.random() * .4;
+    const reward = 5 + Math.floor(w * 1.5) + Math.floor(Math.random() * 3);
+    const side = SPAWN_SIDES[Math.floor(Math.random() * SPAWN_SIDES.length)];
+    const type = w < 3 ? 'normal' : (Math.random() < .3 ? 'fast' : (Math.random() < .25 ? 'tank' : 'normal'));
+    queue.push({ hp, maxHp: hp, speed, reward, side, type, x: 0, y: 0, id: Math.random() });
+  }
+  return queue;
+}
+
+function announceWave(w) {
+  const el = document.getElementById('waveAnnounce');
+  if (w % 5 === 0) {
+    el.innerHTML = `⚠️ Boss波 ${w} ⚠️`;
+    el.style.color = '#ff0000';
+  } else {
+    el.innerHTML = `第 ${w} 波来袭`;
+    el.style.color = '#ff4444';
+  }
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function startWave(w) {
+  spawnQueue = generateWave(w);
+  spawnTimer = 0;
+  betweenWaves = false;
+}
+
+// ========== ENEMY ==========
+function spawnEnemy(cfg) {
+  let x, y;
+  if (cfg.side === 'left') { x = -30; y = roomY + roomH * .3 + Math.random() * roomH * .4; }
+  else if (cfg.side === 'right') { x = W + 30; y = roomY + roomH * .3 + Math.random() * roomH * .4; }
+  else { x = roomX + Math.random() * roomW; y = -30; }
+
+  const enemy = {
+    x, y, hp: cfg.hp, maxHp: cfg.maxHp,
+    speed: cfg.speed, reward: cfg.reward,
+    side: cfg.side, type: cfg.type,
+    targetX: roomX + roomW * .5,
+    targetY: roomY + roomH * .5,
+    debuffTimer: 0, debuffFactor: 1,
+    hitFlash: 0,
+    radius: cfg.type === 'tank' ? 20 : (cfg.type === 'fast' ? 12 : 15),
+    attackTimer: 0,
+  };
+  enemies.push(enemy);
+}
+
+function updateEnemy(e, dt) {
+  // Move toward room center
+  const tx = e.targetX, ty = e.targetY;
+  const dx = tx - e.x, dy = ty - e.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+
+  // Check if reached room
+  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
+  const dToRoom = Math.sqrt((e.x-roomCX)**2 + (e.y-roomCY)**2);
+  const roomRadius = Math.min(roomW, roomH) * .4;
+
+  if (dToRoom < roomRadius) {
+    // Attack room
+    e.attackTimer += dt;
+    if (e.attackTimer >= 60) {
+      e.attackTimer = 0;
+      const dmg = e.type === 'tank' ? 12 : (e.type === 'fast' ? 5 : 8);
+      roomHp -= dmg;
+      flashDamage();
+      spawnParticle(e.x, e.y, '#ff0000', '💥');
+      if (roomHp <= 0) { roomHp = 0; endGame(); }
+    }
+    return false; // don't remove
+  }
+
+  // Move
+  let spd = e.speed;
+  if (e.debuffTimer > 0) { spd *= e.debuffFactor; e.debuffTimer--; }
+  if (spd > 0) {
+    e.x += (dx/dist) * spd * dt * .05;
+    e.y += (dy/dist) * spd * dt * .05;
+  }
+  if (e.hitFlash > 0) e.hitFlash -= dt;
+  return false;
+}
+
+function drawEnemy(e) {
+  const flashing = e.hitFlash > 0;
+  const r = e.radius;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(e.x, e.y + r*1.1, r*.8, r*.3, 0, 0, Math.PI*2); ctx.fill();
+
+  // Ghost body
+  const grad = ctx.createRadialGradient(e.x, e.y-r*.3, 0, e.x, e.y, r*1.3);
+  if (flashing) {
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(1, '#ff8888');
+  } else if (e.type === 'tank') {
+    grad.addColorStop(0, '#8833aa'); grad.addColorStop(1, '#3a0055');
+  } else if (e.type === 'fast') {
+    grad.addColorStop(0, '#4488ff'); grad.addColorStop(1, '#001155');
+  } else {
+    grad.addColorStop(0, '#666688'); grad.addColorStop(1, '#222244');
+  }
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  // Ghost shape
+  ctx.arc(e.x, e.y - r*.2, r, Math.PI, 0, false);
+  ctx.lineTo(e.x + r, e.y + r*.5);
+  for (let i = 0; i < 4; i++) {
+    const px = e.x + r - (r*2/4)*(i+1) + Math.sin((Date.now()/200)+i)*2;
+    ctx.quadraticCurveTo(px, e.y + r*1.1, px - r/4, e.y + r*.5);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyes
+  const eyeY = e.y - r*.3;
+  ctx.fillStyle = flashing ? '#ff0000' : (e.type==='tank'?'#ff00ff':(e.type==='fast'?'#00ffff':'#ff3333'));
+  ctx.beginPath(); ctx.arc(e.x - r*.3, eyeY, r*.18, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(e.x + r*.3, eyeY, r*.18, 0, Math.PI*2); ctx.fill();
+  // Pupils
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(e.x - r*.3, eyeY, r*.08, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(e.x + r*.3, eyeY, r*.08, 0, Math.PI*2); ctx.fill();
+
+  // Debuff effect
+  if (e.debuffTimer > 0) {
+    ctx.strokeStyle = '#cc44ff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.arc(e.x, e.y, r+5, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // HP bar
+  const bw = r*2.2, bh = 4;
+  const bx = e.x - bw/2, by = e.y - r*1.8;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = e.hp/e.maxHp > .5 ? '#44ff44' : (e.hp/e.maxHp > .25 ? '#ffaa00' : '#ff4444');
+  ctx.fillRect(bx, by, bw*(e.hp/e.maxHp), bh);
+}
+
+// ========== TOWER ==========
+function placeTower(x, y) {
+  if (selectedTower < 0) return;
+  const t = TOWER_TYPES[selectedTower];
+  if (coins < t.cost) return;
+
+  // Don't place inside room or too close to room center
+  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
+  const dToRoom = Math.sqrt((x-roomCX)**2 + (y-roomCY)**2);
+  const roomRadius = Math.min(roomW, roomH) * .45;
+  if (dToRoom < roomRadius) return;
+
+  // Don't overlap existing towers
+  for (const tw of towers) {
+    if (Math.hypot(tw.x-x, tw.y-y) < 28) return;
+  }
+
+  coins -= t.cost;
+  towers.push({
+    x, y,
+    type: selectedTower,
+    cooldown: 0,
+    angle: 0,
+    scale: 0, // grow animation
+  });
+  spawnParticle(x, y, '#ffd700', '⬆');
+  updateUI();
+  // Deselect after placing (optional, keep selected for quick place)
+  // selectTower(-1);
+}
+
+function updateTower(tw, dt) {
+  if (tw.scale < 1) tw.scale = Math.min(1, tw.scale + dt * .08);
+  const t = TOWER_TYPES[tw.type];
+  if (t.type === 'heal') {
+    // Heal room
+    if (tw.cooldown <= 0) {
+      tw.cooldown = t.cooldown;
+      roomHp = Math.min(maxRoomHp, roomHp + Math.abs(t.damage));
+      spawnParticle(tw.x, tw.y, '#44ff88', '+❤');
+      updateUI();
+    }
+    tw.cooldown = Math.max(0, tw.cooldown - dt);
+    return;
+  }
+  if (tw.cooldown > 0) { tw.cooldown -= dt; return; }
+
+  // Find target
+  let target = null, minDist = t.range;
+  for (const e of enemies) {
+    const d = Math.hypot(e.x-tw.x, e.y-tw.y);
+    if (d < minDist) { minDist = d; target = e; }
+  }
+
+  if (target) {
+    tw.cooldown = t.cooldown;
+    tw.angle = Math.atan2(target.y - tw.y, target.x - tw.x);
+    fireProjectile(tw, target, t);
+  }
+}
+
+function fireProjectile(tw, target, t) {
+  projectiles.push({
+    x: tw.x, y: tw.y,
+    targetId: target.id,
+    speed: 6,
+    damage: t.damage,
+    color: t.color,
+    type: t.type,
+    aoeRadius: t.aoeRadius || 0,
+    slowFactor: t.slowFactor || 0,
+    slowDur: t.slowDur || 0,
+    debuffFactor: t.debuffFactor || 1,
+    debuffDur: t.debuffDur || 0,
+    radius: t.type==='aoe' ? 5 : 3,
+  });
+}
+
+function drawTower(tw) {
+  const t = TOWER_TYPES[tw.type];
+  const sc = tw.scale;
+  ctx.save();
+  ctx.translate(tw.x, tw.y);
+  ctx.scale(sc, sc);
+
+  // Base
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = t.color; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI*2); ctx.stroke();
+
+  // Tower icon
+  ctx.font = '18px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(t.icon, 0, 0);
+
+  // Range indicator when selected
+  if (selectedTower === tw.type) {
+    ctx.strokeStyle = t.color + '44';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.arc(0, 0, t.range, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Cooldown bar
+  if (tw.cooldown > 0 && TOWER_TYPES[tw.type].type !== 'heal') {
+    const pct = tw.cooldown / TOWER_TYPES[tw.type].cooldown;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-12, 18, 24, 3);
+    ctx.fillStyle = t.color;
+    ctx.fillRect(-12, 18, 24*(1-pct), 3);
+  }
+
+  ctx.restore();
+}
+
+// ========== PROJECTILE ==========
+function updateProjectile(p, dt) {
+  // Find target enemy
+  const target = enemies.find(e => e.id === p.targetId);
+  if (!target) return true; // remove
+  const dx = target.x - p.x, dy = target.y - p.y;
+  const dist = Math.sqrt(dx*dx+dy*dy);
+  if (dist < 8) {
+    // Hit!
+    if (p.type === 'aoe') {
+      // AOE damage
+      for (const e of enemies) {
+        if (Math.hypot(e.x-target.x, e.y-target.y) < p.aoeRadius) {
+          damageEnemy(e, p.damage);
+          spawnParticle(e.x, e.y, '#ffff00', '⚡');
+        }
+      }
+      // AOE visual
+      for (let i = 0; i < 8; i++) {
+        const a = (i/8)*Math.PI*2;
+        particles.push({ x:p.x, y:p.y, vx:Math.cos(a)*3, vy:Math.sin(a)*3, life:20, color:'#ffff00', text:'⚡', size:14 });
+      }
+    } else {
+      damageEnemy(target, p.damage);
+      if (p.slowFactor > 0) { target.speed *= p.slowFactor; target.debuffTimer = p.slowDur; }
+      if (p.debuffFactor < 1) { target.debuffFactor = p.debuffFactor; target.debuffTimer = p.debuffDur; }
+      spawnParticle(target.x, target.y, p.color, TOWER_TYPES[selectedTower>=0?selectedTower:0].icon);
+    }
+    return true;
+  }
+  p.x += (dx/dist)*p.speed*dt*.1;
+  p.y += (dy/dist)*p.speed*dt*.1;
+  return false;
+}
+
+function drawProjectile(p) {
+  ctx.fillStyle = p.color;
+  ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function damageEnemy(e, dmg) {
+  e.hp -= dmg;
+  e.hitFlash = 8;
+  if (e.hp <= 0) {
+    kills++;
+    const reward = e.reward;
+    coins += reward;
+    totalCoinsEarned += reward;
+    spawnCoinPopup(e.x, e.y, reward);
+    spawnDeathParticles(e.x, e.y);
+    enemies.splice(enemies.indexOf(e), 1);
+    updateUI();
+  }
+}
+
+function spawnDeathParticles(x, y) {
+  for (let i = 0; i < 6; i++) {
+    const a = Math.random()*Math.PI*2;
+    particles.push({ x, y, vx:Math.cos(a)*(1+Math.random()*2), vy:Math.sin(a)*(1+Math.random()*2), life:30+Math.random()*20, color:'#8888cc', size:8 });
+  }
+}
+
+// ========== PARTICLES ==========
+function spawnParticle(x, y, color, text) {
+  particles.push({ x, y, vx:(Math.random()-.5)*2, vy:-1-Math.random()*2, life:30, color, text, size:16 });
+}
+function spawnCoinPopup(x, y, amount) {
+  const el = document.createElement('div');
+  el.className = 'coin-popup';
+  el.textContent = '+' + amount;
+  el.style.left = (x - canvas.getBoundingClientRect().left + canvas.offsetLeft) + 'px';
+  el.style.top = (y - canvas.getBoundingClientRect().top + canvas.offsetTop - 20) + 'px';
+  el.style.position = 'fixed';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function updateParticle(p, dt) {
+  p.x += p.vx * dt * .05;
+  p.y += p.vy * dt * .05;
+  p.life -= dt;
+  return p.life <= 0;
+}
+
+function drawParticle(p) {
+  ctx.globalAlpha = Math.max(0, p.life / 30);
+  if (p.text) {
+    ctx.font = p.size + 'px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.text, p.x, p.y);
+  } else {
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ========== RENDER ==========
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Dark background with vignette
+  const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*.7);
+  bgGrad.addColorStop(0, '#0f0f1a');
+  bgGrad.addColorStop(1, '#050508');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid floor
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Room (dorm building)
+  drawRoom();
+
+  // Tower range preview
+  if (selectedTower >= 0 && canPlace) {
+    const t = TOWER_TYPES[selectedTower];
+    ctx.strokeStyle = t.color + '55';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6,6]);
+    ctx.beginPath(); ctx.arc(mouseX, mouseY, t.range, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    // Place preview
+    ctx.globalAlpha = .5;
+    ctx.fillStyle = canPlace ? t.color : '#ff0000';
+    ctx.beginPath(); ctx.arc(mouseX, mouseY, 16, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Towers
+  towers.forEach(tw => drawTower(tw));
+
+  // Enemies
+  enemies.forEach(e => drawEnemy(e));
+
+  // Projectiles
+  projectiles.forEach(p => drawProjectile(p));
+
+  // Particles
+  particles.forEach(p => drawParticle(p));
+
+  // Between wave countdown
+  if (betweenWaves && !gameOver) {
+    const secs = Math.ceil(betweenWaveTimer / 60);
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.fillRect(W/2-80, H/2-20, 160, 40);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 18px Microsoft YaHei';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`下一波 ${secs}s`, W/2, H/2);
+  }
+}
+
+function drawRoom() {
+  const x = roomX, y = roomY, w = roomW, h = roomH;
+  const cx = x + w/2, cy = y + h/2;
+
+  // Room glow (danger indicator)
+  const hpRatio = roomHp / maxRoomHp;
+  const glowColor = hpRatio > .5 ? 'rgba(68,255,136,.08)' : (hpRatio > .25 ? 'rgba(255,170,0,.1)' : 'rgba(255,0,0,.18)');
+  const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w,h)*.7);
+  glowGrad.addColorStop(0, glowColor);
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(x - 40, y - 40, w + 80, h + 80);
+
+  // Building wall
+  ctx.fillStyle = '#1a1a2e';
+  ctx.strokeStyle = '#333366';
+  ctx.lineWidth = 3;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x, y, w, h);
+
+  // Brick pattern
+  ctx.strokeStyle = '#252540';
+  ctx.lineWidth = 1;
+  for (let row = 0; row < Math.floor(h/20); row++) {
+    const yb = y + row * 20;
+    ctx.beginPath(); ctx.moveTo(x, yb); ctx.lineTo(x+w, yb); ctx.stroke();
+    const offset = (row % 2) * 20;
+    for (let col = 0; col < Math.ceil(w/40)+1; col++) {
+      const xb = x + col * 40 - offset;
+      ctx.beginPath(); ctx.moveTo(xb, yb); ctx.lineTo(xb, yb+20); ctx.stroke();
+    }
+  }
+
+  // Windows/doors
+  ctx.fillStyle = '#0a0a15';
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.lineWidth = 2;
+  // Door
+  ctx.fillRect(cx - 20, y + h - 60, 40, 60);
+  ctx.strokeRect(cx - 20, y + h - 60, 40, 60);
+
+  // Windows
+  for (let i = 0; i < 2; i++) {
+    const wx = x + w * .2 + i * w * .6 - 25;
+    ctx.fillRect(wx, y + 20, 50, 40);
+    ctx.strokeRect(wx, y + 20, 50, 40);
+    // Window cross
+    ctx.beginPath(); ctx.moveTo(wx+25, y+20); ctx.lineTo(wx+25, y+60); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx, y+40); ctx.lineTo(wx+50, y+40); ctx.stroke();
+  }
+
+  // Roof
+  ctx.fillStyle = '#2a2a44';
+  ctx.beginPath();
+  ctx.moveTo(x - 10, y);
+  ctx.lineTo(cx, y - 30);
+  ctx.lineTo(x + w + 10, y);
+  ctx.closePath();
+  ctx.fill();
+
+  // HP-based damage cracks
+  if (hpRatio < .75) {
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    const cracks = Math.ceil((1-hpRatio) * 6);
+    for (let i = 0; i < cracks; i++) {
+      const sx = x + 20 + i * (w-40) / cracks;
+      ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx+5, y+30); ctx.lineTo(sx-3, y+50); ctx.stroke();
+    }
+  }
+
+  // "宿舍" label
+  ctx.fillStyle = '#444466';
+  ctx.font = 'bold 14px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  ctx.fillText('宿 舍', cx, y + h/2);
+
+  // Danger pulse when low HP
+  if (hpRatio < .3) {
+    const pulse = (Math.sin(Date.now()/200) + 1) * .5;
+    ctx.strokeStyle = `rgba(255,0,0,${pulse*.5})`;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x-5, y-5, w+10, h+10);
+  }
+}
+
+// ========== GAME LOOP ==========
+function gameLoop(timestamp) {
+  if (!gameRunning) { requestAnimationFrame(gameLoop); return; }
+  const dt = Math.min((timestamp - lastTime) / 16.67, 3); // normalize to ~60fps
+  lastTime = timestamp;
+
+  // Between waves
+  if (betweenWaves) {
+    betweenWaveTimer -= dt;
+    if (betweenWaveTimer <= 0) {
+      startWave(wave);
+    }
+  } else {
+    // Spawn enemies
+    if (spawnQueue.length > 0) {
+      spawnTimer += dt;
+      if (spawnTimer >= 40) {
+        spawnTimer = 0;
+        spawnEnemy(spawnQueue.shift());
+      }
+    }
+
+    // Check wave complete
+    if (spawnQueue.length === 0 && enemies.length === 0) {
+      wave++;
+      betweenWaves = true;
+      betweenWaveTimer = 150; // 2.5s between waves
+      announceWave(wave);
+      // Bonus coins
+      const bonus = wave * 5;
+      coins += bonus;
+      totalCoinsEarned += bonus;
+      spawnParticle(W/2, H/2, '#ffd700', `+${bonus} Bonus!`);
+      updateUI();
+    }
+  }
+
+  // Update towers
+  towers.forEach(tw => updateTower(tw, dt));
+
+  // Update enemies
+  enemies.forEach(e => updateEnemy(e, dt));
+
+  // Update projectiles
+  projectiles = projectiles.filter(p => !updateProjectile(p, dt));
+
+  // Update particles
+  particles = particles.filter(p => !updateParticle(p, dt));
+
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ========== UI ==========
+function updateUI() {
+  document.getElementById('hWave').textContent = wave;
+  document.getElementById('hCoin').textContent = coins;
+  document.getElementById('hHp').textContent = Math.ceil(roomHp);
+  document.getElementById('hKill').textContent = kills;
+
+  const hpRatio = roomHp / maxRoomHp;
+  const hpFill = document.getElementById('roomHpFill');
+  hpFill.style.width = (hpRatio * 100) + '%';
+  hpFill.style.background = hpRatio > .5 ? 'linear-gradient(90deg,#44ff88,#88ffaa)' : (hpRatio > .25 ? 'linear-gradient(90deg,#ffaa00,#ffcc44)' : 'linear-gradient(90deg,#ff4444,#ff8844)');
+
+  // Update tower button states
+  for (let i = 0; i < 5; i++) {
+    const btn = document.getElementById('btn' + i);
+    const cost = TOWER_COSTS[i];
+    btn.classList.toggle('selected', selectedTower === i);
+    btn.disabled = coins < cost;
+    document.getElementById('cost' + i).textContent = cost;
+  }
+}
+
+function selectTower(idx) {
+  if (idx === selectedTower) { selectedTower = -1; }
+  else { selectedTower = idx; }
+  updateUI();
+}
+
+function updateCanPlace() {
+  // Can't place inside room or outside canvas
+  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
+  const dToRoom = Math.sqrt((mouseX-roomCX)**2 + (mouseY-roomCY)**2);
+  const roomRadius = Math.min(roomW, roomH) * .45;
+  canPlace = (selectedTower >= 0) && (dToRoom >= roomRadius) &&
+             (mouseX > 10 && mouseX < W-10 && mouseY > 10 && mouseY < H-10);
+}
+
+function flashDamage() {
+  document.body.classList.add('damage-flash');
+  setTimeout(() => document.body.classList.remove('damage-flash'), 300);
+}
+
+function endGame() {
+  gameRunning = false;
+  gameOver = true;
+  const ov = document.getElementById('overlay');
+  document.getElementById('ovTitle').textContent = '宿舍沦陷';
+  document.getElementById('ovTitle').className = '';
+  document.getElementById('ovSubtitle').textContent = `猛鬼攻破了第 ${wave} 波...再接再厉！`;
+  document.getElementById('ovWave').textContent = wave;
+  document.getElementById('ovKill').textContent = kills;
+  document.getElementById('ovCoin').textContent = totalCoinsEarned;
+  ov.style.display = 'flex';
+}
+
+function restartGame() {
+  document.getElementById('overlay').style.display = 'none';
+  startGame();
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+init();
+</script>
+</body>
+</html>
