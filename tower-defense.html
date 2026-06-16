@@ -1,835 +1,2644 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>猛鬼宿舍</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>猛鬼宿舍 - 微恐塔防</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;color:#fff;font-family:'Microsoft YaHei',sans-serif;overflow:hidden;user-select:none;touch-action:none}
-#gameCanvas{display:block;margin:0 auto}
-/* HUD */
-#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-around;align-items:center;padding:10px 16px;background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 100%);z-index:10;font-size:15px;font-weight:bold;pointer-events:none}
-.hud-item{display:flex;flex-direction:column;align-items:center;gap:2px}
-.hud-label{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:1px}
-.hud-value{font-size:20px;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.5)}
-.hud-value.red{color:#ff4444;text-shadow:0 0 8px rgba(255,68,68,.5)}
-.hud-value.green{color:#44ff88;text-shadow:0 0 8px rgba(68,255,136,.5)}
-/* Tower panel */
-#towerPanel{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,.95);border-top:1px solid #333;padding:8px 12px;display:flex;justify-content:space-around;z-index:10;gap:6px}
-.tower-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:8px;border:1px solid #333;background:#1a1a1a;cursor:pointer;transition:all .15s;color:#fff;font-size:11px;min-width:0}
-.tower-btn:hover,.tower-btn:active{border-color:#ffd700;background:#222}
-.tower-btn.selected{border-color:#ffd700;background:#2a2a00;box-shadow:0 0 10px rgba(255,215,0,.3)}
-.tower-btn .icon{font-size:22px;margin-bottom:3px}
-.tower-btn .name{font-size:10px;opacity:.8}
-.tower-btn .cost{color:#ffd700;font-size:10px;font-weight:bold;margin-top:2px}
-.tower-btn .desc{font-size:9px;opacity:.5;margin-top:2px}
-.tower-btn:disabled{opacity:.35;cursor:not-allowed;border-color:#222}
-/* Game overlay screens */
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center;padding:20px}
-#overlay h1{font-size:36px;color:#fff;margin-bottom:10px;text-shadow:0 0 20px rgba(255,68,68,.6)}
-#overlay h1.win{color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,.6)}
-#overlay .subtitle{font-size:14px;opacity:.6;margin-bottom:30px}
-#overlay .stat-row{display:flex;gap:30px;margin-bottom:30px}
-#overlay .stat{text-align:center}
-#overlay .stat-num{font-size:32px;font-weight:bold;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.4)}
-#overlay .stat-label{font-size:12px;opacity:.5;margin-top:4px}
-#overlay .btn{display:inline-block;padding:14px 40px;background:#ffd700;color:#000;font-size:16px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;margin:6px;transition:all .2s}
-#overlay .btn:hover{background:#ffec8b;transform:scale(1.05)}
-#overlay .btn.secondary{background:#333;color:#fff}
-#overlay .btn.secondary:hover{background:#444}
-/* Wave announce */
-#waveAnnounce{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:bold;color:#ff4444;text-shadow:0 0 20px rgba(255,68,68,.8);z-index:50;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center}
-#waveAnnounce.show{opacity:1}
-/* Coin popup */
-@keyframes coinPop{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-40px) scale(.7)}}
-.coin-popup{position:fixed;font-size:16px;font-weight:bold;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.6);pointer-events:none;z-index:60;animation:coinPop 1s ease-out forwards}
-/* Damage flash */
-@keyframes dmgFlash{0%,100%{background:transparent}50%{background:rgba(255,0,0,.25)}}
-body.damage-flash{animation:dmgFlash .3s ease-out}
-/* HP bar on room */
-#roomHpBar{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);width:200px;height:16px;background:#222;border:2px solid #444;border-radius:8px;overflow:hidden;z-index:10;pointer-events:none}
-#roomHpFill{height:100%;background:linear-gradient(90deg,#ff4444,#ff8844);transition:width .3s;border-radius:6px}
-/* Help tip */
-#tip{position:fixed;bottom:75px;right:12px;font-size:11px;opacity:.4;pointer-events:none;z-index:10;text-align:right;line-height:1.6}
+/* ========== 全局样式 ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a0a12;
+  font-family: 'Microsoft YaHei', sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+canvas {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+}
 </style>
 </head>
 <body>
-<!-- HUD -->
-<div id="hud">
-  <div class="hud-item"><span class="hud-label">波次</span><span class="hud-value red" id="hWave">1</span></div>
-  <div class="hud-item"><span class="hud-label">金币</span><span class="hud-value" id="hCoin">50</span></div>
-  <div class="hud-item"><span class="hud-label">血量</span><span class="hud-value green" id="hHp">100</span></div>
-  <div class="hud-item"><span class="hud-label">击杀</span><span class="hud-value" id="hKill">0</span></div>
-</div>
-
-<!-- Tower Panel -->
-<div id="towerPanel">
-  <div class="tower-btn" onclick="selectTower(0)" id="btn0">
-    <span class="icon">🔥</span><span class="name">火炮</span><span class="cost" id="cost0">25</span><span class="desc">单体高伤害</span>
-  </div>
-  <div class="tower-btn" onclick="selectTower(1)" id="btn1">
-    <span class="icon">❄️</span><span class="name">冰霜</span><span class="cost" id="cost1">30</span><span class="desc">群体减速</span>
-  </div>
-  <div class="tower-btn" onclick="selectTower(2)" id="btn2">
-    <span class="icon">⚡</span><span class="name">电网</span><span class="cost" id="cost2">40</span><span class="desc">范围电击</span>
-  </div>
-  <div class="tower-btn" onclick="selectTower(3)" id="btn3">
-    <span class="icon">🛡️</span><span class="name">加固</span><span class="cost" id="cost3">20</span><span class="desc">修复血量</span>
-  </div>
-  <div class="tower-btn" onclick="selectTower(4)" id="btn4">
-    <span class="icon">💀</span><span class="name">诅咒</span><span class="cost" id="cost4">50</span><span class="desc">降低敌防</span>
-  </div>
-</div>
-
-<!-- Room HP bar -->
-<div id="roomHpBar"><div id="roomHpFill" style="width:100%"></div></div>
-
-<!-- Wave announce -->
-<div id="waveAnnounce"></div>
-
-<!-- Tip -->
-<div id="tip">点击地面放置炮塔<br>消灭猛鬼获取金币<br>保护宿舍不被攻破</div>
-
-<!-- Overlay -->
-<div id="overlay" style="display:none">
-  <h1 id="ovTitle">游戏结束</h1>
-  <p class="subtitle" id="ovSubtitle">宿舍被猛鬼攻破了</p>
-  <div class="stat-row">
-    <div class="stat"><div class="stat-num" id="ovWave">0</div><div class="stat-label">存活波次</div></div>
-    <div class="stat"><div class="stat-num" id="ovKill">0</div><div class="stat-label">击杀总数</div></div>
-    <div class="stat"><div class="stat-num" id="ovCoin">0</div><div class="stat-label">获得金币</div></div>
-  </div>
-  <button class="btn" onclick="restartGame()">再来一局</button>
-</div>
-
 <canvas id="gameCanvas"></canvas>
-
 <script>
-// ========== CONSTANTS ==========
-const TOWER_TYPES = [
-  { name:'火炮', icon:'🔥', cost:25, range:130, damage:35, cooldown:60, color:'#ff6600', type:'single' },
-  { name:'冰霜', icon:'❄️', cost:30, range:120, damage:12, cooldown:50, cooldownMax:180, color:'#44aaff', type:'slow', slowFactor:.35, slowDur:90 },
-  { name:'电网', icon:'⚡', cost:40, range:110, damage:18, cooldown:70, color:'#ffff00', type:'aoe', aoeRadius:70 },
-  { name:'加固', icon:'🛡️', cost:20, range:0,  damage:-30, cooldown:90, color:'#44ff88', type:'heal' },
-  { name:'诅咒', icon:'💀', cost:50, range:100, damage:8,  cooldown:80, color:'#cc44ff', type:'debuff', debuffFactor:.5, debuffDur:120 },
-];
-const TOWER_COSTS = [25,30,40,20,50];
+// ========== 游戏配置 ==========
+const CONFIG = {
+  // 素材路径
+  ASSETS: {
+    UI: {
+      MENU_BG: '微恐塔防素材/UI素材/首页/局外背景图.jpg',
+      START_BTN: '微恐塔防素材/UI素材/首页/开始游戏按钮.png',
+      SIGN_IN: '微恐塔防素材/UI素材/首页/签到入口.png',
+      COIN_FRAME: '微恐塔防素材/UI素材/首页/货币持有框.png',
+      SELECT_BG: '微恐塔防素材/UI素材/首页/选角背景.png',
+      WIN_RESULT: '微恐塔防素材/UI素材/结算页/成功结算.png',
+      LOSE_RESULT: '微恐塔防素材/UI素材/结算页/失败结算.png',
+      CLAIM_BTN: '微恐塔防素材/UI素材/结算页/领取按钮.png',
+      TECH_SHOP: '微恐塔防素材/UI素材/弹窗/科技商店弹窗.png',
+      GAME_SHOP: '微恐塔防素材/UI素材/弹窗/局内商店弹窗.png',
+      BUILD_BTN: '微恐塔防素材/UI素材/弹窗/建造按钮.png',
+      BUY_BTN: '微恐塔防素材/UI素材/弹窗/可购买按钮.png',
+      NO_BUY_BTN: '微恐塔防素材/UI素材/弹窗/不可购买按钮.png',
+    },
+    ROOMS: [
+      '微恐塔防素材/房间地图/废弃医院.png',
+      '微恐塔防素材/房间地图/幽灵船.jpg',
+      '微恐塔防素材/房间地图/末日堡垒.jpg',
+    ],
+  },
 
-// ========== GAME STATE ==========
-let canvas, ctx, W, H, roomX, roomY, roomW, roomH;
-let coins = 50, roomHp = 100, maxRoomHp = 100;
-let wave = 1, kills = 0, totalCoinsEarned = 0;
-let selectedTower = -1;
-let towers = [], enemies = [], projectiles = [], particles = [], effects = [];
-let gameRunning = false, gameOver = false;
-let waveTimer = 0, betweenWaves = true, betweenWaveTimer = 0;
-let lastTime = 0;
+  // 网格配置
+  GRID_COLS: 7,
+  GRID_ROWS: 5,
 
-// Enemy spawn queue
-let spawnQueue = [], spawnTimer = 0;
+  // 初始资源
+  INIT_GOLD: 30,
+  INIT_POWER: 0,
 
-// Mouse/touch
-let mouseX = 0, mouseY = 0;
-let canPlace = false;
+  // Boss刷新间隔（秒）
+  BOSS_SPAWN_INTERVAL: 30,
+  // 准备时间（秒）
+  PREPARE_TIME: 30,
 
-// Ghost path from left/right edges toward room
-const SPAWN_SIDES = ['left','right','top'];
+  // 床铺数据：[等级, 金币产出/秒, 升级费用]
+  BED_DATA: [
+    { level: 1, income: 1, cost: 0 },
+    { level: 2, income: 2, cost: 30 },
+    { level: 3, income: 4, cost: 100 },
+    { level: 4, income: 8, cost: 300 },
+    { level: 5, income: 16, cost: 800 },
+    { level: 6, income: 32, cost: 2000 },
+    { level: 7, income: 64, cost: 5000 },
+  ],
 
-// ========== INIT ==========
-function init() {
-  canvas = document.getElementById('gameCanvas');
-  ctx = canvas.getContext('2d');
-  resize();
-  window.addEventListener('resize', resize);
+  // 房门数据
+  DOOR_DATA: [
+    { level: 1, hp: 100, cost: 0 },
+    { level: 2, hp: 200, cost: 50 },
+    { level: 3, hp: 350, cost: 120 },
+    { level: 4, hp: 500, cost: 250 },
+    { level: 5, hp: 700, cost: 500 },
+    { level: 6, hp: 900, cost: 800 },
+    { level: 7, hp: 1200, cost: 1500 },
+    { level: 8, hp: 1600, cost: 2500 },
+    { level: 9, hp: 2000, cost: 4000 },
+    { level: 10, hp: 2500, cost: 6000 },
+    { level: 11, hp: 3200, cost: 8000 },
+    { level: 12, hp: 4000, cost: 12000 },
+    { level: 13, hp: 5000, cost: 18000 },
+  ],
 
-  // Mouse events
-  canvas.addEventListener('mousemove', e => {
-    mouseX = e.offsetX; mouseY = e.offsetY;
-    updateCanPlace();
-  });
-  canvas.addEventListener('click', e => {
-    if (selectedTower >= 0 && canPlace) placeTower(e.offsetX, e.offsetY);
-  });
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const t = e.touches[0];
-    mouseX = t.clientX - rect.left; mouseY = t.clientY - rect.top;
-    updateCanPlace();
-    if (selectedTower >= 0 && canPlace) placeTower(mouseX, mouseY);
-  }, {passive:false});
+  // 炮台数据
+  TOWER_DATA: [
+    { level: 1, atk: 5, range: 150, speed: 1.0, cost: 50 },
+    { level: 2, atk: 10, range: 160, speed: 0.9, cost: 80 },
+    { level: 3, atk: 15, range: 170, speed: 0.8, cost: 150 },
+    { level: 4, atk: 20, range: 180, speed: 0.7, cost: 300 },
+    { level: 5, atk: 30, range: 190, speed: 0.6, cost: 500 },
+    { level: 6, atk: 40, range: 200, speed: 0.5, cost: 800 },
+    { level: 7, atk: 55, range: 210, speed: 0.5, cost: 1200 },
+    { level: 8, atk: 70, range: 220, speed: 0.4, cost: 1800 },
+    { level: 9, atk: 90, range: 230, speed: 0.4, cost: 2800 },
+    { level: 10, atk: 120, range: 250, speed: 0.3, cost: 4000 },
+    { level: 11, atk: 160, range: 270, speed: 0.3, cost: 6000 },
+    { level: 12, atk: 200, range: 300, speed: 0.2, cost: 9000 },
+  ],
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') selectTower(-1);
-    if (e.key >= '1' && e.key <= '5') selectTower(parseInt(e.key)-1);
-  });
+  // 发电机数据
+  GENERATOR_DATA: [
+    { level: 1, output: 1, cost: 50 },
+    { level: 2, output: 2, cost: 120 },
+    { level: 3, output: 4, cost: 300 },
+    { level: 4, output: 8, cost: 600 },
+  ],
 
-  updateUI();
-  startGame();
-  requestAnimationFrame(gameLoop);
-}
+  // 矿场数据
+  MINE_DATA: [
+    { type: '铁矿', income: 8, cost: 100, powerCost: 1 },
+    { type: '铜矿', income: 32, cost: 400, powerCost: 3 },
+    { type: '银矿', income: 128, cost: 1500, powerCost: 8 },
+    { type: '金矿', income: 512, cost: 5000, powerCost: 20 },
+  ],
 
-function resize() {
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W;
-  canvas.height = H;
-  const roomSize = Math.min(W * .38, H * .55);
-  roomW = roomSize;
-  roomH = roomSize * .7;
-  roomX = (W - roomW) / 2;
-  roomY = (H - roomH) / 2 + 20;
-}
+  // 修复台
+  REPAIR_COST: 50, // 电力
 
-function startGame() {
-  coins = 50; roomHp = 100; maxRoomHp = 100;
-  wave = 1; kills = 0; totalCoinsEarned = 0;
-  towers = []; enemies = []; projectiles = []; particles = []; effects = [];
-  gameRunning = true; gameOver = false;
-  betweenWaves = true; betweenWaveTimer = 180;
-  spawnQueue = [];
-  document.getElementById('overlay').style.display = 'none';
-  updateUI();
-  announceWave(1);
-}
+  // 特殊建筑
+  SPECIAL_BUILDINGS: {
+    shield: { name: '能量罩', desc: '大门血量<30%产生5秒无敌', cost: 80, category: 'defense' },
+    piggyBank: { name: '零钱罐', desc: '炮塔偷钱能力', cost: 60, category: 'defense' },
+    fridge: { name: '冰箱', desc: '敌人-20%攻击速度', cost: 70, category: 'defense' },
+    stunCharm: { name: '定身符', desc: '定住逃跑boss 2秒', cost: 90, category: 'passive' },
+    ring: { name: '乾坤圈', desc: '大门被攻击时反伤1%/秒', cost: 100, category: 'passive' },
+    drumstick: { name: '大鸡腿', desc: 'boss血量<30%直接造成10%伤害', cost: 120, category: 'passive' },
+    watchtower: { name: '瞭望塔', desc: '炮台+20%攻击范围', cost: 80, category: 'attack' },
+    accelerator: { name: '加速器', desc: '炮台+30%攻击速度', cost: 80, category: 'attack' },
+    emCannon: { name: '电磁弹射', desc: '炮台+40%攻击伤害', cost: 100, category: 'attack' },
+  },
 
-// ========== WAVE SYSTEM ==========
-function generateWave(w) {
-  const count = 3 + w * 2;
-  const queue = [];
-  for (let i = 0; i < count; i++) {
-    const hp = 30 + w * 15 + Math.floor(Math.random() * w * 8);
-    const speed = .8 + w * .06 + Math.random() * .4;
-    const reward = 5 + Math.floor(w * 1.5) + Math.floor(Math.random() * 3);
-    const side = SPAWN_SIDES[Math.floor(Math.random() * SPAWN_SIDES.length)];
-    const type = w < 3 ? 'normal' : (Math.random() < .3 ? 'fast' : (Math.random() < .25 ? 'tank' : 'normal'));
-    queue.push({ hp, maxHp: hp, speed, reward, side, type, x: 0, y: 0, id: Math.random() });
-  }
-  return queue;
-}
+  // 关卡Boss数据
+  LEVELS: [
+    { // 简单
+      name: '简单', color: '#4CAF50',
+      bossData: [
+        { level: 1, hp: 200, atk: 5, atkCount: 0 },
+        { level: 2, hp: 400, atk: 10, atkCount: 5 },
+        { level: 3, hp: 800, atk: 20, atkCount: 10 },
+        { level: 4, hp: 1600, atk: 40, atkCount: 15 },
+        { level: 5, hp: 3200, atk: 80, atkCount: 20 },
+      ],
+    },
+    { // 困难
+      name: '困难', color: '#FF9800',
+      bossData: [
+        { level: 1, hp: 400, atk: 10, atkCount: 0 },
+        { level: 2, hp: 800, atk: 20, atkCount: 5 },
+        { level: 3, hp: 1600, atk: 40, atkCount: 10 },
+        { level: 4, hp: 3200, atk: 80, atkCount: 15 },
+        { level: 5, hp: 6400, atk: 160, atkCount: 20 },
+      ],
+    },
+    { // 炼狱
+      name: '炼狱', color: '#F44336',
+      bossData: [
+        { level: 4, hp: 3200, atk: 80, atkCount: 0 },
+        { level: 5, hp: 6400, atk: 160, atkCount: 10 },
+        { level: 6, hp: 12800, atk: 320, atkCount: 15 },
+        { level: 7, hp: 25600, atk: 640, atkCount: 20 },
+      ],
+    },
+  ],
+};
 
-function announceWave(w) {
-  const el = document.getElementById('waveAnnounce');
-  if (w % 5 === 0) {
-    el.innerHTML = `⚠️ Boss波 ${w} ⚠️`;
-    el.style.color = '#ff0000';
-  } else {
-    el.innerHTML = `第 ${w} 波来袭`;
-    el.style.color = '#ff4444';
-  }
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2000);
-}
+// ========== 工具函数 ==========
 
-function startWave(w) {
-  spawnQueue = generateWave(w);
-  spawnTimer = 0;
-  betweenWaves = false;
-}
-
-// ========== ENEMY ==========
-function spawnEnemy(cfg) {
-  let x, y;
-  if (cfg.side === 'left') { x = -30; y = roomY + roomH * .3 + Math.random() * roomH * .4; }
-  else if (cfg.side === 'right') { x = W + 30; y = roomY + roomH * .3 + Math.random() * roomH * .4; }
-  else { x = roomX + Math.random() * roomW; y = -30; }
-
-  const enemy = {
-    x, y, hp: cfg.hp, maxHp: cfg.maxHp,
-    speed: cfg.speed, reward: cfg.reward,
-    side: cfg.side, type: cfg.type,
-    targetX: roomX + roomW * .5,
-    targetY: roomY + roomH * .5,
-    debuffTimer: 0, debuffFactor: 1,
-    hitFlash: 0,
-    radius: cfg.type === 'tank' ? 20 : (cfg.type === 'fast' ? 12 : 15),
-    attackTimer: 0,
-  };
-  enemies.push(enemy);
-}
-
-function updateEnemy(e, dt) {
-  // Move toward room center
-  const tx = e.targetX, ty = e.targetY;
-  const dx = tx - e.x, dy = ty - e.y;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-
-  // Check if reached room
-  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
-  const dToRoom = Math.sqrt((e.x-roomCX)**2 + (e.y-roomCY)**2);
-  const roomRadius = Math.min(roomW, roomH) * .4;
-
-  if (dToRoom < roomRadius) {
-    // Attack room
-    e.attackTimer += dt;
-    if (e.attackTimer >= 60) {
-      e.attackTimer = 0;
-      const dmg = e.type === 'tank' ? 12 : (e.type === 'fast' ? 5 : 8);
-      roomHp -= dmg;
-      flashDamage();
-      spawnParticle(e.x, e.y, '#ff0000', '💥');
-      if (roomHp <= 0) { roomHp = 0; endGame(); }
-    }
-    return false; // don't remove
-  }
-
-  // Move
-  let spd = e.speed;
-  if (e.debuffTimer > 0) { spd *= e.debuffFactor; e.debuffTimer--; }
-  if (spd > 0) {
-    e.x += (dx/dist) * spd * dt * .05;
-    e.y += (dy/dist) * spd * dt * .05;
-  }
-  if (e.hitFlash > 0) e.hitFlash -= dt;
-  return false;
-}
-
-function drawEnemy(e) {
-  const flashing = e.hitFlash > 0;
-  const r = e.radius;
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(e.x, e.y + r*1.1, r*.8, r*.3, 0, 0, Math.PI*2); ctx.fill();
-
-  // Ghost body
-  const grad = ctx.createRadialGradient(e.x, e.y-r*.3, 0, e.x, e.y, r*1.3);
-  if (flashing) {
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(1, '#ff8888');
-  } else if (e.type === 'tank') {
-    grad.addColorStop(0, '#8833aa'); grad.addColorStop(1, '#3a0055');
-  } else if (e.type === 'fast') {
-    grad.addColorStop(0, '#4488ff'); grad.addColorStop(1, '#001155');
-  } else {
-    grad.addColorStop(0, '#666688'); grad.addColorStop(1, '#222244');
-  }
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  // Ghost shape
-  ctx.arc(e.x, e.y - r*.2, r, Math.PI, 0, false);
-  ctx.lineTo(e.x + r, e.y + r*.5);
-  for (let i = 0; i < 4; i++) {
-    const px = e.x + r - (r*2/4)*(i+1) + Math.sin((Date.now()/200)+i)*2;
-    ctx.quadraticCurveTo(px, e.y + r*1.1, px - r/4, e.y + r*.5);
-  }
-  ctx.closePath();
-  ctx.fill();
-
-  // Eyes
-  const eyeY = e.y - r*.3;
-  ctx.fillStyle = flashing ? '#ff0000' : (e.type==='tank'?'#ff00ff':(e.type==='fast'?'#00ffff':'#ff3333'));
-  ctx.beginPath(); ctx.arc(e.x - r*.3, eyeY, r*.18, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(e.x + r*.3, eyeY, r*.18, 0, Math.PI*2); ctx.fill();
-  // Pupils
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(e.x - r*.3, eyeY, r*.08, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(e.x + r*.3, eyeY, r*.08, 0, Math.PI*2); ctx.fill();
-
-  // Debuff effect
-  if (e.debuffTimer > 0) {
-    ctx.strokeStyle = '#cc44ff';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.arc(e.x, e.y, r+5, 0, Math.PI*2); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // HP bar
-  const bw = r*2.2, bh = 4;
-  const bx = e.x - bw/2, by = e.y - r*1.8;
-  ctx.fillStyle = '#333';
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.fillStyle = e.hp/e.maxHp > .5 ? '#44ff44' : (e.hp/e.maxHp > .25 ? '#ffaa00' : '#ff4444');
-  ctx.fillRect(bx, by, bw*(e.hp/e.maxHp), bh);
-}
-
-// ========== TOWER ==========
-function placeTower(x, y) {
-  if (selectedTower < 0) return;
-  const t = TOWER_TYPES[selectedTower];
-  if (coins < t.cost) return;
-
-  // Don't place inside room or too close to room center
-  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
-  const dToRoom = Math.sqrt((x-roomCX)**2 + (y-roomCY)**2);
-  const roomRadius = Math.min(roomW, roomH) * .45;
-  if (dToRoom < roomRadius) return;
-
-  // Don't overlap existing towers
-  for (const tw of towers) {
-    if (Math.hypot(tw.x-x, tw.y-y) < 28) return;
-  }
-
-  coins -= t.cost;
-  towers.push({
-    x, y,
-    type: selectedTower,
-    cooldown: 0,
-    angle: 0,
-    scale: 0, // grow animation
-  });
-  spawnParticle(x, y, '#ffd700', '⬆');
-  updateUI();
-  // Deselect after placing (optional, keep selected for quick place)
-  // selectTower(-1);
-}
-
-function updateTower(tw, dt) {
-  if (tw.scale < 1) tw.scale = Math.min(1, tw.scale + dt * .08);
-  const t = TOWER_TYPES[tw.type];
-  if (t.type === 'heal') {
-    // Heal room
-    if (tw.cooldown <= 0) {
-      tw.cooldown = t.cooldown;
-      roomHp = Math.min(maxRoomHp, roomHp + Math.abs(t.damage));
-      spawnParticle(tw.x, tw.y, '#44ff88', '+❤');
-      updateUI();
-    }
-    tw.cooldown = Math.max(0, tw.cooldown - dt);
-    return;
-  }
-  if (tw.cooldown > 0) { tw.cooldown -= dt; return; }
-
-  // Find target
-  let target = null, minDist = t.range;
-  for (const e of enemies) {
-    const d = Math.hypot(e.x-tw.x, e.y-tw.y);
-    if (d < minDist) { minDist = d; target = e; }
-  }
-
-  if (target) {
-    tw.cooldown = t.cooldown;
-    tw.angle = Math.atan2(target.y - tw.y, target.x - tw.x);
-    fireProjectile(tw, target, t);
-  }
-}
-
-function fireProjectile(tw, target, t) {
-  projectiles.push({
-    x: tw.x, y: tw.y,
-    targetId: target.id,
-    speed: 6,
-    damage: t.damage,
-    color: t.color,
-    type: t.type,
-    aoeRadius: t.aoeRadius || 0,
-    slowFactor: t.slowFactor || 0,
-    slowDur: t.slowDur || 0,
-    debuffFactor: t.debuffFactor || 1,
-    debuffDur: t.debuffDur || 0,
-    radius: t.type==='aoe' ? 5 : 3,
+/** 加载图片，返回Promise */
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null); // 加载失败返回null
+    img.src = src;
   });
 }
 
-function drawTower(tw) {
-  const t = TOWER_TYPES[tw.type];
-  const sc = tw.scale;
-  ctx.save();
-  ctx.translate(tw.x, tw.y);
-  ctx.scale(sc, sc);
-
-  // Base
-  ctx.fillStyle = '#1a1a2e';
-  ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle = t.color; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI*2); ctx.stroke();
-
-  // Tower icon
-  ctx.font = '18px serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(t.icon, 0, 0);
-
-  // Range indicator when selected
-  if (selectedTower === tw.type) {
-    ctx.strokeStyle = t.color + '44';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.arc(0, 0, t.range, 0, Math.PI*2); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // Cooldown bar
-  if (tw.cooldown > 0 && TOWER_TYPES[tw.type].type !== 'heal') {
-    const pct = tw.cooldown / TOWER_TYPES[tw.type].cooldown;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(-12, 18, 24, 3);
-    ctx.fillStyle = t.color;
-    ctx.fillRect(-12, 18, 24*(1-pct), 3);
-  }
-
-  ctx.restore();
+/** 限制数值范围 */
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
 }
 
-// ========== PROJECTILE ==========
-function updateProjectile(p, dt) {
-  // Find target enemy
-  const target = enemies.find(e => e.id === p.targetId);
-  if (!target) return true; // remove
-  const dx = target.x - p.x, dy = target.y - p.y;
-  const dist = Math.sqrt(dx*dx+dy*dy);
-  if (dist < 8) {
-    // Hit!
-    if (p.type === 'aoe') {
-      // AOE damage
-      for (const e of enemies) {
-        if (Math.hypot(e.x-target.x, e.y-target.y) < p.aoeRadius) {
-          damageEnemy(e, p.damage);
-          spawnParticle(e.x, e.y, '#ffff00', '⚡');
-        }
-      }
-      // AOE visual
-      for (let i = 0; i < 8; i++) {
-        const a = (i/8)*Math.PI*2;
-        particles.push({ x:p.x, y:p.y, vx:Math.cos(a)*3, vy:Math.sin(a)*3, life:20, color:'#ffff00', text:'⚡', size:14 });
-      }
-    } else {
-      damageEnemy(target, p.damage);
-      if (p.slowFactor > 0) { target.speed *= p.slowFactor; target.debuffTimer = p.slowDur; }
-      if (p.debuffFactor < 1) { target.debuffFactor = p.debuffFactor; target.debuffTimer = p.debuffDur; }
-      spawnParticle(target.x, target.y, p.color, TOWER_TYPES[selectedTower>=0?selectedTower:0].icon);
-    }
+/** 两点距离 */
+function dist(x1, y1, x2, y2) {
+  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+}
+
+/** 线性插值 */
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+/** 格式化数字（大数缩写） */
+function formatNum(n) {
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  return Math.floor(n).toString();
+}
+
+/** 随机范围 */
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+/** 简单音效生成器 */
+class SFX {
+  constructor() {
+    this.ctx = null;
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  /** 播放简单音调 */
+  play(freq, duration, type = 'square', vol = 0.1) {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration);
+  }
+  hit() { this.play(200, 0.15, 'sawtooth', 0.08); }
+  build() { this.play(440, 0.1, 'sine', 0.06); }
+  upgrade() { this.play(660, 0.15, 'sine', 0.08); }
+  bossHit() { this.play(100, 0.3, 'sawtooth', 0.12); }
+  doorBreak() { this.play(60, 0.5, 'sawtooth', 0.15); }
+  win() { this.play(523, 0.2, 'sine', 0.1); setTimeout(() => this.play(659, 0.2, 'sine', 0.1), 200); setTimeout(() => this.play(784, 0.4, 'sine', 0.1), 400); }
+  lose() { this.play(300, 0.3, 'sawtooth', 0.1); setTimeout(() => this.play(200, 0.5, 'sawtooth', 0.1), 300); }
+  ghost() { this.play(800, 0.8, 'sine', 0.03); }
+}
+
+// ========== 游戏状态 ==========
+
+// 游戏状态枚举
+const STATE = { MENU: 0, SELECT_CHAR: 1, SELECT_LEVEL: 2, PLAYING: 3, PAUSED: 4, RESULT: 5 };
+
+// 全局游戏数据
+const game = {
+  state: STATE.MENU,
+  canvas: null,
+  ctx: null,
+  W: 0, H: 0,
+  scale: 1,
+  dpr: 1,
+
+  // 资源
+  gold: CONFIG.INIT_GOLD,
+  power: CONFIG.INIT_POWER,
+
+  // 选择
+  charGender: 'male', // male / female
+  levelIndex: 0,
+
+  // 时间
+  gameTime: 0,       // 游戏总时间
+  prepareTime: CONFIG.PREPARE_TIME,
+  bossSpawnTimer: 0,
+  lastTimestamp: 0,
+
+  // 实体
+  buildings: [],      // 网格上的建筑
+  bosses: [],         // 当前所有boss
+  projectiles: [],    // 弹道
+  floatTexts: [],     // 飘字
+  particles: [],      // 粒子
+
+  // 房间网格
+  grid: [],           // 7x5 二维数组
+
+  // 门
+  door: null,
+  // 床
+  bed: null,
+  // 玩家
+  player: null,
+
+  // 特殊建筑激活状态
+  specials: {},
+
+  // UI状态
+  ui: {
+    buildPanelOpen: false,
+    selectedBuildType: null,
+    selectedCell: null,   // {col, row}
+    infoPopup: null,      // 显示建筑信息的弹窗
+    shopOpen: false,
+    shopTab: 'defense',   // defense / passive / attack
+  },
+
+  // 氛围
+  flickerTimer: 0,
+  flickerAlpha: 0,
+  ghostTimer: 0,
+  ghostAlpha: 0,
+  ghostX: 0, ghostY: 0,
+  shakeAmount: 0,
+  shakeTimer: 0,
+
+  // 结算
+  result: null, // 'win' / 'lose'
+  resultStats: { bossesKilled: 0, timeSurvived: 0, goldEarned: 0 },
+
+  // 素材缓存
+  images: {},
+  imagesLoaded: false,
+
+  // 音效
+  sfx: new SFX(),
+
+  // 动画帧
+  animFrame: 0,
+  animTimer: 0,
+};
+
+// ========== 素材加载 ==========
+
+/** 预加载所有素材 */
+async function loadAllAssets() {
+  const paths = {};
+  // UI素材
+  for (const [key, val] of Object.entries(CONFIG.ASSETS.UI)) {
+    paths['ui_' + key] = val;
+  }
+  // 房间地图
+  CONFIG.ASSETS.ROOMS.forEach((p, i) => { paths['room_' + i] = p; });
+
+  const promises = Object.entries(paths).map(async ([key, src]) => {
+    const img = await loadImage(src);
+    game.images[key] = img;
+  });
+
+  await Promise.all(promises);
+  game.imagesLoaded = true;
+}
+
+// ========== 实体类 ==========
+
+/** 建筑基类 */
+class Building {
+  constructor(type, col, row) {
+    this.type = type;
+    this.col = col;
+    this.row = row;
+    this.level = 1;
+  }
+  get x() { return gridToX(this.col); }
+  get y() { return gridToY(this.row); }
+}
+
+/** 床 */
+class Bed extends Building {
+  constructor(col, row) {
+    super('bed', col, row);
+    this.level = 1;
+  }
+  get income() { return CONFIG.BED_DATA[this.level - 1].income; }
+  get upgradeCost() {
+    return this.level < CONFIG.BED_DATA.length ? CONFIG.BED_DATA[this.level].cost : null;
+  }
+  canUpgrade() { return this.level < CONFIG.BED_DATA.length; }
+  upgrade() {
+    if (!this.canUpgrade()) return false;
+    const cost = this.upgradeCost;
+    if (game.gold < cost) return false;
+    game.gold -= cost;
+    this.level++;
+    game.sfx.upgrade();
+    addFloatText(this.x, this.y - 20, '床升级!', '#4CAF50');
     return true;
   }
-  p.x += (dx/dist)*p.speed*dt*.1;
-  p.y += (dy/dist)*p.speed*dt*.1;
+}
+
+/** 门 */
+class Door {
+  constructor() {
+    this.type = 'door'; // 兼容信息弹窗
+    this.level = 1;
+    this.maxHp = CONFIG.DOOR_DATA[0].hp;
+    this.hp = this.maxHp;
+    this.invincible = false;
+    this.invincibleTimer = 0;
+    this.col = 0;
+    this.row = 2; // 中间行
+    this.canUpgrade = () => this.level < CONFIG.DOOR_DATA.length;
+  }
+  get x() { return gridToX(this.col); }
+  get y() { return gridToY(this.row); }
+  get upgradeCost() {
+    return this.level < CONFIG.DOOR_DATA.length ? CONFIG.DOOR_DATA[this.level].cost : null;
+  }
+  canUpgrade() { return this.level < CONFIG.DOOR_DATA.length; }
+  upgrade() {
+    if (!this.canUpgrade()) return false;
+    const cost = this.upgradeCost;
+    if (game.gold < cost) return false;
+    game.gold -= cost;
+    this.level++;
+    const data = CONFIG.DOOR_DATA[this.level - 1];
+    this.maxHp = data.hp;
+    this.hp = this.maxHp;
+    game.sfx.upgrade();
+    addFloatText(this.x, this.y - 20, '门升级!', '#4CAF50');
+    return true;
+  }
+  /** 受到伤害 */
+  takeDamage(dmg) {
+    if (this.invincible) return;
+    this.hp -= dmg;
+    game.shakeAmount = 5;
+    game.shakeTimer = 0.2;
+    game.sfx.bossHit();
+    // 能量罩检测
+    if (game.specials.shield && this.hp / this.maxHp < 0.3 && !this.invincible) {
+      this.invincible = true;
+      this.invincibleTimer = 5;
+      addFloatText(this.x, this.y - 30, '能量罩!', '#00BCD4');
+    }
+    if (this.hp <= 0) {
+      this.hp = 0;
+      game.sfx.doorBreak();
+    }
+  }
+  /** 每帧更新 */
+  update(dt) {
+    // 修复台回血
+    if (game.specials.repair) {
+      const heal = this.maxHp * 0.01 * dt;
+      this.hp = Math.min(this.maxHp, this.hp + heal);
+    }
+    // 无敌时间
+    if (this.invincible) {
+      this.invincibleTimer -= dt;
+      if (this.invincibleTimer <= 0) this.invincible = false;
+    }
+  }
+}
+
+/** 炮台 */
+class Tower extends Building {
+  constructor(col, row) {
+    super('tower', col, row);
+    this.level = 1;
+    this.atkTimer = 0;
+    this.target = null;
+    this.angle = 0;
+  }
+  get atk() {
+    let base = CONFIG.TOWER_DATA[this.level - 1].atk;
+    if (game.specials.emCannon) base *= 1.4;
+    return base;
+  }
+  get range() {
+    let base = CONFIG.TOWER_DATA[this.level - 1].range;
+    if (game.specials.watchtower) base *= 1.2;
+    return base * game.scale;
+  }
+  get speed() {
+    let base = CONFIG.TOWER_DATA[this.level - 1].speed;
+    if (game.specials.accelerator) base *= 0.7;
+    return base;
+  }
+  get upgradeCost() {
+    return this.level < CONFIG.TOWER_DATA.length ? CONFIG.TOWER_DATA[this.level].cost : null;
+  }
+  canUpgrade() { return this.level < CONFIG.TOWER_DATA.length; }
+  upgrade() {
+    if (!this.canUpgrade()) return false;
+    const cost = this.upgradeCost;
+    if (game.gold < cost) return false;
+    game.gold -= cost;
+    this.level++;
+    game.sfx.upgrade();
+    addFloatText(this.x, this.y - 20, '炮台升级!', '#4CAF50');
+    return true;
+  }
+  /** 寻找目标 */
+  findTarget() {
+    let closest = null;
+    let minDist = this.range;
+    for (const boss of game.bosses) {
+      if (boss.dead) continue;
+      const d = dist(this.x, this.y, boss.x, boss.y);
+      if (d < minDist) {
+        minDist = d;
+        closest = boss;
+      }
+    }
+    return closest;
+  }
+  /** 更新炮台逻辑 */
+  update(dt) {
+    this.atkTimer -= dt;
+    this.target = this.findTarget();
+    if (this.target) {
+      this.angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+      if (this.atkTimer <= 0) {
+        this.shoot();
+        this.atkTimer = this.speed;
+      }
+    }
+  }
+  /** 发射弹道 */
+  shoot() {
+    if (!this.target) return;
+    game.projectiles.push(new Projectile(
+      this.x, this.y, this.target, this.atk
+    ));
+    game.sfx.hit();
+    // 零钱罐偷钱
+    if (game.specials.piggyBank && this.target) {
+      const stolen = Math.ceil(this.target.level * 2);
+      game.gold += stolen;
+    }
+  }
+}
+
+/** 发电机 */
+class Generator extends Building {
+  constructor(col, row) {
+    super('generator', col, row);
+    this.level = 1;
+  }
+  get output() { return CONFIG.GENERATOR_DATA[this.level - 1].output; }
+  get upgradeCost() {
+    return this.level < CONFIG.GENERATOR_DATA.length ? CONFIG.GENERATOR_DATA[this.level].cost : null;
+  }
+  canUpgrade() { return this.level < CONFIG.GENERATOR_DATA.length; }
+  upgrade() {
+    if (!this.canUpgrade()) return false;
+    const cost = this.upgradeCost;
+    if (game.gold < cost) return false;
+    game.gold -= cost;
+    this.level++;
+    game.sfx.upgrade();
+    addFloatText(this.x, this.y - 20, '发电机升级!', '#4CAF50');
+    return true;
+  }
+}
+
+/** 矿场 */
+class Mine extends Building {
+  constructor(col, row, mineIndex) {
+    super('mine', col, row);
+    this.mineIndex = mineIndex;
+    this.level = 1;
+  }
+  get income() { return CONFIG.MINE_DATA[this.mineIndex].income; }
+  get powerCost() { return CONFIG.MINE_DATA[this.mineIndex].powerCost; }
+}
+
+/** 修复台 */
+class RepairStation extends Building {
+  constructor(col, row) {
+    super('repair', col, row);
+  }
+}
+
+/** 特殊建筑 */
+class SpecialBuilding extends Building {
+  constructor(col, row, specialKey) {
+    super('special', col, row);
+    this.specialKey = specialKey;
+  }
+}
+
+/** Boss实体 */
+class Boss {
+  constructor(levelIndex, bossLevelIndex) {
+    const levelData = CONFIG.LEVELS[levelIndex];
+    const bossData = levelData.bossData[bossLevelIndex];
+    this.levelIndex = levelIndex;
+    this.bossLevelIndex = bossLevelIndex;
+    this.level = bossData.level;
+    this.maxHp = bossData.hp;
+    this.hp = this.maxHp;
+    this.atk = bossData.atk;
+    this.atkCountNeeded = bossData.atkCount;
+    this.atkCount = 0;
+    this.dead = false;
+    this.retreating = false;
+    this.healing = false;
+    this.healTimer = 0;
+    this.stunTimer = 0;
+    // 位置：从左侧门外出生
+    this.spawnX = gridToX(0) - 80 * game.scale;
+    this.spawnY = gridToY(2);
+    this.x = this.spawnX;
+    this.y = this.spawnY;
+    this.targetX = gridToX(0); // 门的x位置
+    this.speed = 40 * game.scale;
+    this.atkTimer = 0;
+    this.atkInterval = 1.0; // 每秒攻击一次
+    this.animTimer = 0;
+    this.isAttacking = false;
+    this.atkAnimTimer = 0;
+    // 冰箱减速
+    this.slowed = false;
+  }
+  /** 更新Boss逻辑 */
+  update(dt) {
+    if (this.dead) return;
+    this.animTimer += dt;
+
+    // 定身状态
+    if (this.stunTimer > 0) {
+      this.stunTimer -= dt;
+      return;
+    }
+
+    // 回血状态
+    if (this.healing) {
+      this.healTimer -= dt;
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.033 * dt);
+      if (this.healTimer <= 0) {
+        this.healing = false;
+        this.retreating = false;
+        // 重新进攻
+        this.hp = this.maxHp;
+      }
+      return;
+    }
+
+    // 撤退
+    if (this.retreating) {
+      const dx = this.spawnX - this.x;
+      const moveSpeed = this.speed * 1.5;
+      if (Math.abs(dx) > 2) {
+        this.x += Math.sign(dx) * moveSpeed * dt;
+      } else {
+        this.x = this.spawnX;
+        this.healing = true;
+        this.healTimer = 30;
+      }
+      return;
+    }
+
+    // 向门移动
+    const dx = this.targetX - this.x;
+    if (Math.abs(dx) > 5) {
+      this.x += Math.sign(dx) * this.speed * dt;
+      this.isAttacking = false;
+    } else {
+      // 到达门，开始攻击
+      this.isAttacking = true;
+      this.atkAnimTimer += dt;
+      this.atkTimer -= dt;
+      if (this.atkTimer <= 0) {
+        this.attackDoor();
+        this.atkTimer = this.atkInterval;
+        // 冰箱减速
+        if (game.specials.fridge) {
+          this.atkTimer = this.atkInterval * 1.2;
+        }
+      }
+    }
+  }
+  /** 攻击门 */
+  attackDoor() {
+    if (!game.door) return;
+    game.door.takeDamage(this.atk);
+    this.atkCount++;
+    // 乾坤圈反伤
+    if (game.specials.ring) {
+      this.hp -= this.maxHp * 0.01;
+      if (this.hp <= 0) this.hp = 0;
+    }
+    // 检查升级
+    this.checkUpgrade();
+  }
+  /** 检查是否升级 */
+  checkUpgrade() {
+    if (this.atkCountNeeded > 0 && this.atkCount >= this.atkCountNeeded) {
+      const levelData = CONFIG.LEVELS[this.levelIndex];
+      const nextIdx = this.bossLevelIndex + 1;
+      if (nextIdx < levelData.bossData.length) {
+        this.bossLevelIndex = nextIdx;
+        const newData = levelData.bossData[nextIdx];
+        this.level = newData.level;
+        this.maxHp = newData.hp;
+        this.hp = this.maxHp;
+        this.atk = newData.atk;
+        this.atkCountNeeded = newData.atkCount;
+        this.atkCount = 0;
+        addFloatText(this.x, this.y - 40, 'Boss升级!', '#FF5722');
+      }
+    }
+  }
+  /** 受到伤害 */
+  takeDamage(dmg) {
+    if (this.dead) return;
+    this.hp -= dmg;
+    addFloatText(this.x + randRange(-10, 10), this.y - 20, '-' + Math.floor(dmg), '#FF5722');
+    // 大鸡腿：boss血量低于30%时直接造成10%伤害（仅触发一次）
+    if (game.specials.drumstick && this.hp / this.maxHp < 0.3 && !this._drumstickUsed) {
+      this._drumstickUsed = true;
+      this.hp -= this.maxHp * 0.1;
+      addFloatText(this.x, this.y - 50, '大鸡腿!', '#FF9800');
+    }
+    // 血量低于30%时触发撤退
+    if (this.hp / this.maxHp < 0.3 && !this.retreating && !this.healing) {
+      this.retreating = true;
+      // 定身符：撤退时定住2秒
+      if (game.specials.stunCharm) {
+        this.stunTimer = 2;
+        addFloatText(this.x, this.y - 40, '定身!', '#9C27B0');
+      }
+    }
+    // boss死亡判定
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.dead = true;
+      game.resultStats.bossesKilled++;
+      addFloatText(this.x, this.y - 30, '击杀!', '#FFD700');
+      // 击杀奖励金币
+      const reward = this.level * 20;
+      game.gold += reward;
+      game.resultStats.goldEarned += reward;
+      addFloatText(this.x, this.y - 50, '+' + reward + '金', '#FFD700');
+      // 核心胜利条件：击杀撤退中的boss则获胜
+      if (this.retreating) {
+        game.result = 'win';
+        game.state = STATE.RESULT;
+        game.resultStats.timeSurvived = game.gameTime;
+        game.sfx.win();
+      }
+    }
+  }
+}
+
+/** 弹道 */
+class Projectile {
+  constructor(x, y, target, damage) {
+    this.x = x;
+    this.y = y;
+    this.target = target;
+    this.damage = damage;
+    this.speed = 400 * game.scale;
+    this.dead = false;
+  }
+  update(dt) {
+    if (this.dead || !this.target || this.target.dead) {
+      this.dead = true;
+      return;
+    }
+    const dx = this.target.x - this.x;
+    const dy = this.target.y - this.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 10) {
+      this.target.takeDamage(this.damage);
+      this.dead = true;
+      return;
+    }
+    this.x += (dx / d) * this.speed * dt;
+    this.y += (dy / d) * this.speed * dt;
+  }
+}
+
+/** 飘字效果 */
+class FloatText {
+  constructor(x, y, text, color) {
+    this.x = x;
+    this.y = y;
+    this.text = text;
+    this.color = color;
+    this.life = 1.0;
+    this.vy = -40;
+  }
+  update(dt) {
+    this.y += this.vy * dt;
+    this.life -= dt * 1.2;
+  }
+}
+
+/** 粒子 */
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = randRange(-60, 60);
+    this.vy = randRange(-80, 20);
+    this.life = randRange(0.3, 0.8);
+    this.color = color;
+    this.size = randRange(2, 5);
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vy += 100 * dt;
+    this.life -= dt;
+  }
+}
+
+// ========== 网格与坐标工具 ==========
+
+/** 计算游戏区域参数 */
+function getGameArea() {
+  const W = game.W;
+  const H = game.H;
+  // 游戏区域：居中，留出顶部资源栏和底部建造面板
+  const topBar = 50 * game.scale;
+  const bottomBar = 100 * game.scale;
+  const areaW = W * 0.9;
+  const areaH = H - topBar - bottomBar;
+  const areaX = (W - areaW) / 2;
+  const areaY = topBar;
+  return { areaX, areaY, areaW, areaH, topBar, bottomBar };
+}
+
+/** 网格列转X坐标 */
+function gridToX(col) {
+  const area = getGameArea();
+  const cellW = area.areaW / CONFIG.GRID_COLS;
+  return area.areaX + col * cellW + cellW / 2;
+}
+
+/** 网格行转Y坐标 */
+function gridToY(row) {
+  const area = getGameArea();
+  const cellH = area.areaH / CONFIG.GRID_ROWS;
+  return area.areaY + row * cellH + cellH / 2;
+}
+
+/** 像素坐标转网格 */
+function posToGrid(px, py) {
+  const area = getGameArea();
+  const cellW = area.areaW / CONFIG.GRID_COLS;
+  const cellH = area.areaH / CONFIG.GRID_ROWS;
+  const col = Math.floor((px - area.areaX) / cellW);
+  const row = Math.floor((py - area.areaY) / cellH);
+  if (col < 0 || col >= CONFIG.GRID_COLS || row < 0 || row >= CONFIG.GRID_ROWS) return null;
+  return { col, row };
+}
+
+/** 添加飘字 */
+function addFloatText(x, y, text, color) {
+  game.floatTexts.push(new FloatText(x, y, text, color));
+}
+
+/** 添加粒子 */
+function addParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    game.particles.push(new Particle(x, y, color));
+  }
+}
+
+// ========== 渲染系统 ==========
+
+/** 绘制圆角矩形 */
+function drawRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/** 绘制血条 */
+function drawHPBar(ctx, x, y, w, ratio, color) {
+  const h = 6 * game.scale;
+  const bg = '#333';
+  ctx.fillStyle = bg;
+  ctx.fillRect(x - w / 2, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x - w / 2, y, w * clamp(ratio, 0, 1), h);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - w / 2, y, w, h);
+}
+
+/** 绘制备用图形（图片加载失败时使用） */
+function drawFallbackBuilding(ctx, type, x, y, w, h, level) {
+  const colors = {
+    bed: '#8D6E63',
+    door: '#795548',
+    tower: '#607D8B',
+    generator: '#FFC107',
+    mine: '#FF9800',
+    repair: '#4CAF50',
+    special: '#9C27B0',
+  };
+  ctx.fillStyle = colors[type] || '#666';
+  drawRoundRect(ctx, x - w / 2, y - h / 2, w, h, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labels = { bed: '床', door: '门', tower: '炮', generator: '电', mine: '矿', repair: '修', special: '特' };
+  ctx.fillText((labels[type] || '?') + 'Lv' + level, x, y);
+}
+
+/** 渲染主菜单 */
+function renderMenu(ctx) {
+  const W = game.W, H = game.H;
+  // 背景
+  if (game.images.ui_MENU_BG) {
+    ctx.drawImage(game.images.ui_MENU_BG, 0, 0, W, H);
+  } else {
+    // 备用暗色背景
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#0d0d1a');
+    grad.addColorStop(1, '#1a0a2e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // 暗色覆盖层
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 闪烁效果
+  if (game.flickerAlpha > 0) {
+    ctx.fillStyle = `rgba(200,200,255,${game.flickerAlpha * 0.05})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // 幽灵影子
+  if (game.ghostAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = game.ghostAlpha * 0.3;
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath();
+    ctx.arc(game.ghostX, game.ghostY, 30 * game.scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 标题
+  const titleY = H * 0.25;
+  ctx.save();
+  ctx.shadowColor = '#ff1744';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = `bold ${Math.floor(48 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('猛鬼宿舍', W / 2, titleY);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#9e9e9e';
+  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('微恐塔防', W / 2, titleY + 40 * game.scale);
+  ctx.restore();
+
+  // 开始按钮
+  const btnW = 200 * game.scale;
+  const btnH = 60 * game.scale;
+  const btnX = W / 2 - btnW / 2;
+  const btnY = H * 0.55;
+  if (game.images.ui_START_BTN) {
+    ctx.drawImage(game.images.ui_START_BTN, btnX, btnY, btnW, btnH);
+  } else {
+    ctx.fillStyle = '#c62828';
+    drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.floor(22 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('开始游戏', W / 2, btnY + btnH / 2);
+  }
+  // 记录按钮区域
+  game._menuBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  // 货币框
+  const coinFrameW = 160 * game.scale;
+  const coinFrameH = 36 * game.scale;
+  const coinFrameX = W / 2 - coinFrameW / 2;
+  const coinFrameY = H * 0.72;
+  if (game.images.ui_COIN_FRAME) {
+    ctx.drawImage(game.images.ui_COIN_FRAME, coinFrameX, coinFrameY, coinFrameW, coinFrameH);
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    drawRoundRect(ctx, coinFrameX, coinFrameY, coinFrameW, coinFrameH, 6);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#FFD700';
+  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('💰 ' + formatNum(game.gold), W / 2, coinFrameY + coinFrameH / 2);
+}
+
+/** 渲染角色选择 */
+function renderSelectChar(ctx) {
+  const W = game.W, H = game.H;
+  // 背景
+  if (game.images.ui_SELECT_BG) {
+    ctx.drawImage(game.images.ui_SELECT_BG, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#0d0d1a';
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 标题
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = `bold ${Math.floor(28 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('选择角色', W / 2, H * 0.15);
+
+  // 角色卡片
+  const cardW = 140 * game.scale;
+  const cardH = 200 * game.scale;
+  const gap = 40 * game.scale;
+  const totalW = cardW * 2 + gap;
+  const startX = W / 2 - totalW / 2;
+  const cardY = H * 0.3;
+
+  // 男性角色
+  const maleSelected = game.charGender === 'male';
+  ctx.fillStyle = maleSelected ? 'rgba(33,150,243,0.3)' : 'rgba(255,255,255,0.1)';
+  drawRoundRect(ctx, startX, cardY, cardW, cardH, 10);
+  ctx.fill();
+  ctx.strokeStyle = maleSelected ? '#2196F3' : '#555';
+  ctx.lineWidth = maleSelected ? 3 : 1;
+  ctx.stroke();
+  // 绘制角色图标
+  ctx.fillStyle = '#90CAF9';
+  ctx.font = `${Math.floor(60 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🧑', startX + cardW / 2, cardY + cardH * 0.4);
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('男性角色', startX + cardW / 2, cardY + cardH * 0.75);
+
+  // 女性角色
+  const femaleX = startX + cardW + gap;
+  const femaleSelected = game.charGender === 'female';
+  ctx.fillStyle = femaleSelected ? 'rgba(233,30,99,0.3)' : 'rgba(255,255,255,0.1)';
+  drawRoundRect(ctx, femaleX, cardY, cardW, cardH, 10);
+  ctx.fill();
+  ctx.strokeStyle = femaleSelected ? '#E91E63' : '#555';
+  ctx.lineWidth = femaleSelected ? 3 : 1;
+  ctx.stroke();
+  ctx.fillStyle = '#F48FB1';
+  ctx.font = `${Math.floor(60 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('👩', femaleX + cardW / 2, cardY + cardH * 0.4);
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('女性角色', femaleX + cardW / 2, cardY + cardH * 0.75);
+
+  // 确认按钮
+  const confirmBtnW = 160 * game.scale;
+  const confirmBtnH = 50 * game.scale;
+  const confirmBtnX = W / 2 - confirmBtnW / 2;
+  const confirmBtnY = H * 0.78;
+  ctx.fillStyle = '#4CAF50';
+  drawRoundRect(ctx, confirmBtnX, confirmBtnY, confirmBtnW, confirmBtnH, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('确认选择', W / 2, confirmBtnY + confirmBtnH / 2);
+
+  // 记录交互区域
+  game._charAreas = {
+    male: { x: startX, y: cardY, w: cardW, h: cardH },
+    female: { x: femaleX, y: cardY, w: cardW, h: cardH },
+    confirm: { x: confirmBtnX, y: confirmBtnY, w: confirmBtnW, h: confirmBtnH },
+  };
+}
+
+/** 渲染关卡选择 */
+function renderSelectLevel(ctx) {
+  const W = game.W, H = game.H;
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // 标题
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = `bold ${Math.floor(28 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('选择关卡', W / 2, H * 0.12);
+
+  // 关卡卡片
+  const cardW = Math.min(200 * game.scale, W * 0.28);
+  const cardH = 240 * game.scale;
+  const gap = 20 * game.scale;
+  const totalW = cardW * 3 + gap * 2;
+  const startX = W / 2 - totalW / 2;
+  const cardY = H * 0.22;
+
+  game._levelAreas = [];
+  CONFIG.LEVELS.forEach((level, i) => {
+    const x = startX + i * (cardW + gap);
+    const selected = game.levelIndex === i;
+    // 卡片背景
+    ctx.fillStyle = selected ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
+    drawRoundRect(ctx, x, cardY, cardW, cardH, 10);
+    ctx.fill();
+    ctx.strokeStyle = selected ? level.color : '#444';
+    ctx.lineWidth = selected ? 3 : 1;
+    ctx.stroke();
+    // 关卡地图缩略图
+    const roomImg = game.images['room_' + i];
+    if (roomImg) {
+      ctx.drawImage(roomImg, x + 10, cardY + 10, cardW - 20, cardH * 0.5);
+    } else {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(x + 10, cardY + 10, cardW - 20, cardH * 0.5);
+    }
+    // 关卡名
+    ctx.fillStyle = level.color;
+    ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.fillText(level.name, x + cardW / 2, cardY + cardH * 0.7);
+    // Boss预览
+    ctx.fillStyle = '#aaa';
+    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText('Boss Lv.' + level.bossData[0].level, x + cardW / 2, cardY + cardH * 0.82);
+    ctx.fillText('HP: ' + formatNum(level.bossData[0].hp), x + cardW / 2, cardY + cardH * 0.9);
+
+    game._levelAreas.push({ x, y: cardY, w: cardW, h: cardH, index: i });
+  });
+
+  // 开始按钮
+  const btnW = 180 * game.scale;
+  const btnH = 50 * game.scale;
+  const btnX = W / 2 - btnW / 2;
+  const btnY = H * 0.82;
+  ctx.fillStyle = '#c62828';
+  drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('进入战斗', btnX + btnW / 2, btnY + btnH / 2);
+  game._levelStartBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+}
+
+/** 渲染游戏主界面 */
+function renderPlaying(ctx) {
+  const W = game.W, H = game.H;
+  const area = getGameArea();
+
+  // 屏幕震动偏移
+  let shakeX = 0, shakeY = 0;
+  if (game.shakeTimer > 0) {
+    shakeX = (Math.random() - 0.5) * game.shakeAmount * 2;
+    shakeY = (Math.random() - 0.5) * game.shakeAmount * 2;
+  }
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // 房间背景
+  const roomImg = game.images['room_' + game.levelIndex];
+  if (roomImg) {
+    ctx.drawImage(roomImg, area.areaX, area.areaY, area.areaW, area.areaH);
+  } else {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
+  }
+
+  // 暗色覆盖营造氛围
+  ctx.fillStyle = 'rgba(0,0,10,0.35)';
+  ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
+
+  // 微弱灯光效果
+  const lightX = area.areaX + area.areaW * 0.5;
+  const lightY = area.areaY + area.areaH * 0.3;
+  const lightR = 200 * game.scale;
+  const lightGrad = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, lightR);
+  lightGrad.addColorStop(0, 'rgba(255,240,200,0.08)');
+  lightGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = lightGrad;
+  ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
+
+  // 闪烁效果
+  if (game.flickerAlpha > 0) {
+    ctx.fillStyle = `rgba(200,200,255,${game.flickerAlpha * 0.03})`;
+    ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
+  }
+
+  // 绘制网格线
+  const cellW = area.areaW / CONFIG.GRID_COLS;
+  const cellH = area.areaH / CONFIG.GRID_ROWS;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let c = 0; c <= CONFIG.GRID_COLS; c++) {
+    ctx.beginPath();
+    ctx.moveTo(area.areaX + c * cellW, area.areaY);
+    ctx.lineTo(area.areaX + c * cellW, area.areaY + area.areaH);
+    ctx.stroke();
+  }
+  for (let r = 0; r <= CONFIG.GRID_ROWS; r++) {
+    ctx.beginPath();
+    ctx.moveTo(area.areaX, area.areaY + r * cellH);
+    ctx.lineTo(area.areaX + area.areaW, area.areaY + r * cellH);
+    ctx.stroke();
+  }
+
+  // 高亮可放置格子
+  if (game.ui.selectedBuildType && game.ui.selectedCell) {
+    const { col, row } = game.ui.selectedCell;
+    if (canPlaceAt(col, row)) {
+      ctx.fillStyle = 'rgba(76,175,80,0.3)';
+    } else {
+      ctx.fillStyle = 'rgba(244,67,54,0.3)';
+    }
+    ctx.fillRect(area.areaX + col * cellW, area.areaY + row * cellH, cellW, cellH);
+  }
+
+  // 绘制门
+  renderDoor(ctx, cellW, cellH);
+
+  // 绘制建筑
+  for (const b of game.buildings) {
+    renderBuilding(ctx, b, cellW, cellH);
+  }
+
+  // 绘制玩家
+  renderPlayer(ctx, cellW, cellH);
+
+  // 绘制Boss
+  for (const boss of game.bosses) {
+    renderBoss(ctx, boss);
+  }
+
+  // 绘制弹道
+  for (const p of game.projectiles) {
+    if (!p.dead) {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3 * game.scale, 0, Math.PI * 2);
+      ctx.fill();
+      // 弹道尾迹
+      ctx.fillStyle = 'rgba(255,215,0,0.3)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6 * game.scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 绘制炮台攻击范围（选中时）
+  for (const b of game.buildings) {
+    if (b.type === 'tower' && game.ui.infoPopup === b) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.range, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // 绘制飘字
+  for (const ft of game.floatTexts) {
+    if (ft.life > 0) {
+      ctx.save();
+      ctx.globalAlpha = clamp(ft.life, 0, 1);
+      ctx.fillStyle = ft.color;
+      ctx.font = `bold ${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.restore();
+    }
+  }
+
+  // 绘制粒子
+  for (const p of game.particles) {
+    if (p.life > 0) {
+      ctx.save();
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * game.scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 幽灵影子
+  if (game.ghostAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = game.ghostAlpha * 0.15;
+    ctx.fillStyle = '#ccc';
+    ctx.beginPath();
+    ctx.ellipse(game.ghostX, game.ghostY, 20 * game.scale, 30 * game.scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore(); // 结束震动偏移
+
+  // 顶部资源栏
+  renderTopBar(ctx);
+
+  // 底部建造面板
+  renderBuildPanel(ctx);
+
+  // 暂停按钮
+  renderPauseBtn(ctx);
+
+  // 信息弹窗
+  if (game.ui.infoPopup) {
+    renderInfoPopup(ctx);
+  }
+
+  // 商店弹窗
+  if (game.ui.shopOpen) {
+    renderShopPopup(ctx);
+  }
+
+  // 准备时间提示
+  if (game.gameTime < CONFIG.PREPARE_TIME) {
+    const remaining = Math.ceil(CONFIG.PREPARE_TIME - game.gameTime);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(W / 2 - 100 * game.scale, H * 0.45, 200 * game.scale, 40 * game.scale);
+    ctx.fillStyle = '#FFD700';
+    ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Boss来袭: ${remaining}s`, W / 2, H * 0.45 + 20 * game.scale);
+  }
+
+  // 胜利条件提示（游戏前60秒显示）
+  if (game.gameTime < 60 && game.gameTime >= CONFIG.PREPARE_TIME) {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(W / 2 - 140 * game.scale, H * 0.45, 280 * game.scale, 30 * game.scale);
+    ctx.fillStyle = '#FFD700';
+    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('提示：击杀撤退中的Boss即可获胜！', W / 2, H * 0.45 + 15 * game.scale);
+  }
+}
+
+/** 渲染门 */
+function renderDoor(ctx, cellW, cellH) {
+  const door = game.door;
+  if (!door) return;
+  const x = gridToX(door.col);
+  const y = gridToY(door.row);
+  const w = cellW * 0.8;
+  const h = cellH * 0.85;
+
+  // 门图片或备用图形
+  const doorLevel = Math.min(door.level, 13);
+  const doorImgKey = 'door_' + doorLevel;
+  if (!game.images[doorImgKey]) {
+    // 尝试加载门图片（延迟加载）
+    const src = `微恐塔防素材/门/透视版/${doorLevel}.png`;
+    loadImage(src).then(img => { game.images[doorImgKey] = img; });
+  }
+  if (game.images[doorImgKey]) {
+    ctx.drawImage(game.images[doorImgKey], x - w / 2, y - h / 2, w, h);
+  } else {
+    drawFallbackBuilding(ctx, 'door', x, y, w, h, door.level);
+  }
+
+  // 无敌护罩效果
+  if (door.invincible) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,188,212,0.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(w, h) * 0.6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 血条
+  drawHPBar(ctx, x, y - h / 2 - 10 * game.scale, w, door.hp / door.maxHp, '#4CAF50');
+}
+
+/** 渲染建筑 */
+function renderBuilding(ctx, b, cellW, cellH) {
+  const x = b.x;
+  const y = b.y;
+  const w = cellW * 0.75;
+  const h = cellH * 0.75;
+
+  switch (b.type) {
+    case 'bed': {
+      const bedImgKey = 'bed_' + b.level;
+      if (!game.images[bedImgKey]) {
+        const src = `微恐塔防素材/床/微恐床/${b.level === 1 ? '1级床' : b.level}.png`;
+        loadImage(src).then(img => { game.images[bedImgKey] = img; });
+      }
+      if (game.images[bedImgKey]) {
+        ctx.drawImage(game.images[bedImgKey], x - w / 2, y - h / 2, w, h);
+      } else {
+        drawFallbackBuilding(ctx, 'bed', x, y, w, h, b.level);
+      }
+      // 产出指示
+      ctx.fillStyle = '#FFD700';
+      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText('+' + b.income + '/s', x, y + h / 2 + 12 * game.scale);
+      break;
+    }
+    case 'tower': {
+      const towerIdx = (game.animFrame + b.level) % 12;
+      const towerImgKey = 'tower_' + towerIdx;
+      if (!game.images[towerImgKey]) {
+        const src = `微恐塔防素材/炮台/简易版/炮台简易版_${towerIdx}.png`;
+        loadImage(src).then(img => { game.images[towerImgKey] = img; });
+      }
+      if (game.images[towerImgKey]) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(b.angle);
+        ctx.drawImage(game.images[towerImgKey], -w / 2, -h / 2, w, h);
+        ctx.restore();
+      } else {
+        drawFallbackBuilding(ctx, 'tower', x, y, w, h, b.level);
+      }
+      break;
+    }
+    case 'generator': {
+      const genIdx = (b.level - 1) % 4;
+      const genImgKey = 'gen_' + genIdx;
+      if (!game.images[genImgKey]) {
+        const src = `微恐塔防素材/发电机/发电机_${[0, 2, 3, 6][genIdx]}.png`;
+        loadImage(src).then(img => { game.images[genImgKey] = img; });
+      }
+      if (game.images[genImgKey]) {
+        ctx.drawImage(game.images[genImgKey], x - w / 2, y - h / 2, w, h);
+      } else {
+        drawFallbackBuilding(ctx, 'generator', x, y, w, h, b.level);
+      }
+      ctx.fillStyle = '#FFC107';
+      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText('+' + b.output + '电/s', x, y + h / 2 + 12 * game.scale);
+      break;
+    }
+    case 'mine': {
+      drawFallbackBuilding(ctx, 'mine', x, y, w, h, b.mineIndex + 1);
+      ctx.fillStyle = '#FF9800';
+      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText(CONFIG.MINE_DATA[b.mineIndex].type, x, y - 6 * game.scale);
+      ctx.fillText('+' + b.income + '金/s', x, y + 8 * game.scale);
+      ctx.fillStyle = '#FF5722';
+      ctx.fillText('-' + b.powerCost + '电/s', x, y + h / 2 + 12 * game.scale);
+      break;
+    }
+    case 'repair': {
+      const repairImgKey = 'repair_0';
+      if (!game.images[repairImgKey]) {
+        const src = '微恐塔防素材/修复台/修复台_0.png';
+        loadImage(src).then(img => { game.images[repairImgKey] = img; });
+      }
+      if (game.images[repairImgKey]) {
+        ctx.drawImage(game.images[repairImgKey], x - w / 2, y - h / 2, w, h);
+      } else {
+        drawFallbackBuilding(ctx, 'repair', x, y, w, h, 1);
+      }
+      break;
+    }
+    case 'special': {
+      drawFallbackBuilding(ctx, 'special', x, y, w, h, 1);
+      ctx.fillStyle = '#CE93D8';
+      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      const spData = CONFIG.SPECIAL_BUILDINGS[b.specialKey];
+      if (spData) ctx.fillText(spData.name, x, y + h / 2 + 12 * game.scale);
+      break;
+    }
+  }
+}
+
+/** 渲染玩家 */
+function renderPlayer(ctx, cellW, cellH) {
+  if (!game.player) return;
+  const p = game.player;
+  const x = gridToX(p.col);
+  const y = gridToY(p.row);
+  const w = cellW * 0.6;
+  const h = cellH * 0.8;
+
+  if (p.inBed) {
+    // 睡觉动画 - Zzz
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    const zOffset = Math.sin(game.gameTime * 3) * 5;
+    ctx.fillText('💤', x + 15 * game.scale, y - h / 2 + zOffset);
+  }
+
+  // 角色图片
+  const isMale = game.charGender === 'male';
+  const state = p.inBed ? 'sleep' : 'stand';
+  const frameIdx = Math.floor(game.animFrame) % 6;
+  const imgKey = `player_${isMale ? 'm' : 'f'}_${state}_${frameIdx}`;
+  if (!game.images[imgKey]) {
+    const gender = isMale ? '男性角色' : '女性角色';
+    const prefix = p.inBed ? '睡觉' : '站立';
+    const suffix = isMale ? '男玩家' : '女玩家';
+    const src = `微恐塔防素材/玩家/${gender}/${prefix}-${suffix}_${frameIdx}.png`;
+    loadImage(src).then(img => { game.images[imgKey] = img; });
+  }
+  if (game.images[imgKey]) {
+    ctx.drawImage(game.images[imgKey], x - w / 2, y - h / 2, w, h);
+  } else {
+    // 备用：简单圆形
+    ctx.fillStyle = isMale ? '#64B5F6' : '#F48FB1';
+    ctx.beginPath();
+    ctx.arc(x, y, w * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.fillText(isMale ? '🧑' : '👩', x, y + 4);
+  }
+}
+
+/** 渲染Boss */
+function renderBoss(ctx, boss) {
+  if (boss.dead) return;
+  const x = boss.x;
+  const y = boss.y;
+  const size = 50 * game.scale;
+
+  // Boss图片
+  const isAttacking = boss.isAttacking && boss.atkAnimTimer % 0.6 < 0.3;
+  const isBig = boss.level >= 4;
+  const frameIdx = Math.floor(boss.animTimer * 3) % 3;
+  const imgKey = `boss_${isBig ? 'big' : 'small'}_${isAttacking ? 'atk' : 'idle'}_${frameIdx}`;
+  if (!game.images[imgKey]) {
+    const prefix = isBig ? 'boss大' : '小boss';
+    const suffix = isAttacking ? '攻击' : '';
+    const src = `微恐塔防素材/boss/${prefix}${suffix}_${frameIdx}.png`;
+    loadImage(src).then(img => { game.images[imgKey] = img; });
+  }
+  if (game.images[imgKey]) {
+    ctx.drawImage(game.images[imgKey], x - size, y - size, size * 2, size * 2);
+  } else {
+    // 备用：恐怖红色圆形
+    ctx.fillStyle = boss.retreating ? '#FF5722' : '#c62828';
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.fillText('👻', x, y + 5);
+  }
+
+  // 定身效果
+  if (boss.stunTimer > 0) {
+    ctx.strokeStyle = '#9C27B0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 撤退指示
+  if (boss.retreating) {
+    ctx.fillStyle = '#FF9800';
+    ctx.font = `bold ${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.fillText('撤退中!', x, y - size - 15 * game.scale);
+  }
+
+  // 回血指示
+  if (boss.healing) {
+    ctx.fillStyle = '#4CAF50';
+    ctx.font = `bold ${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.fillText('回血中...', x, y - size - 15 * game.scale);
+  }
+
+  // 血条
+  const hpRatio = boss.hp / boss.maxHp;
+  const hpColor = hpRatio > 0.5 ? '#F44336' : (hpRatio > 0.3 ? '#FF9800' : '#FFEB3B');
+  drawHPBar(ctx, x, y - size - 8 * game.scale, size * 1.5, hpRatio, hpColor);
+
+  // 等级显示
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('Lv.' + boss.level, x, y - size - 14 * game.scale);
+}
+
+/** 渲染顶部资源栏 */
+function renderTopBar(ctx) {
+  const W = game.W;
+  const barH = 44 * game.scale;
+  // 半透明背景
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, W, barH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, barH);
+  ctx.lineTo(W, barH);
+  ctx.stroke();
+
+  const y = barH / 2;
+  ctx.textBaseline = 'middle';
+  const fontSize = Math.floor(16 * game.scale);
+
+  // 金币
+  ctx.fillStyle = '#FFD700';
+  ctx.font = `${fontSize}px Microsoft YaHei`;
+  ctx.textAlign = 'left';
+  ctx.fillText('💰 ' + formatNum(game.gold), 15 * game.scale, y);
+
+  // 电力
+  ctx.fillStyle = '#00BCD4';
+  ctx.fillText('⚡ ' + formatNum(game.power), 150 * game.scale, y);
+
+  // 时间
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'center';
+  const mins = Math.floor(game.gameTime / 60);
+  const secs = Math.floor(game.gameTime % 60);
+  ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, W / 2, y);
+
+  // Boss数量
+  const aliveBosses = game.bosses.filter(b => !b.dead).length;
+  if (aliveBosses > 0) {
+    ctx.fillStyle = '#F44336';
+    ctx.textAlign = 'right';
+    ctx.fillText('👻 x' + aliveBosses, W - 15 * game.scale, y);
+  }
+}
+
+/** 渲染底部建造面板 */
+function renderBuildPanel(ctx) {
+  const W = game.W, H = game.H;
+  const area = getGameArea();
+  const panelY = H - area.bottomBar;
+  const panelH = area.bottomBar;
+
+  // 面板背景
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0, panelY, W, panelH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, panelY);
+  ctx.lineTo(W, panelY);
+  ctx.stroke();
+
+  // 建造按钮列表
+  const btnW = 70 * game.scale;
+  const btnH = 70 * game.scale;
+  const gap = 8 * game.scale;
+  const items = [
+    { type: 'tower', label: '炮台', cost: CONFIG.TOWER_DATA[0].cost + '金', color: '#607D8B' },
+    { type: 'generator', label: '发电机', cost: CONFIG.GENERATOR_DATA[0].cost + '金', color: '#FFC107' },
+    { type: 'mine_0', label: '铁矿', cost: CONFIG.MINE_DATA[0].cost + '金', color: '#FF9800' },
+    { type: 'mine_1', label: '铜矿', cost: CONFIG.MINE_DATA[1].cost + '金', color: '#FF9800' },
+    { type: 'mine_2', label: '银矿', cost: CONFIG.MINE_DATA[2].cost + '金', color: '#FF9800' },
+    { type: 'mine_3', label: '金矿', cost: CONFIG.MINE_DATA[3].cost + '金', color: '#FF9800' },
+    { type: 'repair', label: '修复台', cost: CONFIG.REPAIR_COST + '电', color: '#4CAF50' },
+    { type: 'shop', label: '特殊', cost: '电力', color: '#9C27B0' },
+  ];
+
+  const totalW = items.length * (btnW + gap) - gap;
+  const startX = Math.max(10 * game.scale, (W - totalW) / 2);
+  const btnY = panelY + (panelH - btnH) / 2 - 5 * game.scale;
+
+  game._buildBtns = [];
+  items.forEach((item, i) => {
+    const x = startX + i * (btnW + gap);
+    const isSelected = game.ui.selectedBuildType === item.type;
+
+    // 按钮背景
+    ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)';
+    drawRoundRect(ctx, x, btnY, btnW, btnH, 6);
+    ctx.fill();
+    ctx.strokeStyle = isSelected ? '#fff' : item.color;
+    ctx.lineWidth = isSelected ? 2 : 1;
+    ctx.stroke();
+
+    // 图标和文字
+    ctx.fillStyle = item.color;
+    ctx.font = `bold ${Math.floor(13 * game.scale)}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(item.label, x + btnW / 2, btnY + btnH * 0.35);
+    ctx.fillStyle = '#aaa';
+    ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText(item.cost, x + btnW / 2, btnY + btnH * 0.7);
+
+    game._buildBtns.push({ x, y: btnY, w: btnW, h: btnH, type: item.type });
+  });
+}
+
+/** 渲染暂停按钮 */
+function renderPauseBtn(ctx) {
+  const W = game.W;
+  const size = 36 * game.scale;
+  const x = W - size - 10 * game.scale;
+  const y = 54 * game.scale;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  drawRoundRect(ctx, x, y, size, size, 6);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⏸', x + size / 2, y + size / 2);
+
+  game._pauseBtn = { x, y, w: size, h: size };
+}
+
+/** 渲染建筑信息弹窗 */
+function renderInfoPopup(ctx) {
+  const b = game.ui.infoPopup;
+  if (!b) return;
+  const W = game.W, H = game.H;
+
+  // 半透明遮罩
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 弹窗
+  const popW = 260 * game.scale;
+  const popH = 200 * game.scale;
+  const popX = W / 2 - popW / 2;
+  const popY = H / 2 - popH / 2;
+
+  ctx.fillStyle = 'rgba(30,30,50,0.95)';
+  drawRoundRect(ctx, popX, popY, popW, popH, 12);
+  ctx.fill();
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 内容
+  const cx = W / 2;
+  let ty = popY + 25 * game.scale;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // 标题
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  const names = { bed: '床', door: '大门', tower: '炮台', generator: '发电机', mine: '矿场', repair: '修复台', special: '特殊建筑' };
+  ctx.fillText((names[b.type] || '建筑') + ' Lv.' + b.level, cx, ty);
+
+  // 属性信息
+  ty += 30 * game.scale;
+  ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+  ctx.fillStyle = '#bbb';
+  if (b.type === 'bed') {
+    ctx.fillText('金币产出: ' + b.income + '/秒', cx, ty);
+  } else if (b.type === 'door') {
+    ctx.fillText('血量: ' + Math.floor(b.hp) + '/' + b.maxHp + '  等级: ' + b.level, cx, ty);
+  } else if (b.type === 'tower') {
+    ctx.fillText('攻击力: ' + Math.floor(b.atk) + '  范围: ' + Math.floor(b.range / game.scale), cx, ty);
+    ty += 22 * game.scale;
+    ctx.fillText('攻速: ' + b.speed.toFixed(1) + '秒', cx, ty);
+  } else if (b.type === 'generator') {
+    ctx.fillText('电力产出: ' + b.output + '/秒', cx, ty);
+  } else if (b.type === 'mine') {
+    ctx.fillText('金币产出: ' + b.income + '/秒  电力消耗: ' + b.powerCost + '/秒', cx, ty);
+  }
+
+  // 升级按钮
+  ty += 35 * game.scale;
+  const btnW = 120 * game.scale;
+  const btnH = 36 * game.scale;
+  const btnX = cx - btnW / 2;
+
+  const canUp = (b.type === 'bed' && b.canUpgrade()) ||
+                (b.type === 'tower' && b.canUpgrade()) ||
+                (b.type === 'generator' && b.canUpgrade()) ||
+                (b.type === 'door' && b.canUpgrade());
+  const upCost = b.upgradeCost;
+
+  if (canUp && upCost !== null) {
+    const canAfford = game.gold >= upCost;
+    ctx.fillStyle = canAfford ? '#4CAF50' : '#555';
+    drawRoundRect(ctx, btnX, ty, btnW, btnH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText('升级 (' + upCost + '金)', cx, ty + btnH / 2);
+    game._upgradeBtn = { x: btnX, y: ty, w: btnW, h: btnH, building: b };
+  } else {
+    ctx.fillStyle = '#333';
+    drawRoundRect(ctx, btnX, ty, btnW, btnH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#777';
+    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText('已满级', cx, ty + btnH / 2);
+    game._upgradeBtn = null;
+  }
+
+  // 关闭按钮
+  const closeBtnSize = 30 * game.scale;
+  const closeX = popX + popW - closeBtnSize - 5;
+  const closeY = popY + 5;
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(closeX + closeBtnSize / 2, closeY + closeBtnSize / 2, closeBtnSize / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('✕', closeX + closeBtnSize / 2, closeY + closeBtnSize / 2);
+  game._closePopupBtn = { x: closeX, y: closeY, w: closeBtnSize, h: closeBtnSize };
+}
+
+/** 渲染商店弹窗 */
+function renderShopPopup(ctx) {
+  const W = game.W, H = game.H;
+
+  // 遮罩
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 弹窗
+  const popW = Math.min(360 * game.scale, W * 0.9);
+  const popH = 400 * game.scale;
+  const popX = W / 2 - popW / 2;
+  const popY = H / 2 - popH / 2;
+
+  // 商店背景
+  if (game.images.ui_GAME_SHOP) {
+    ctx.drawImage(game.images.ui_GAME_SHOP, popX, popY, popW, popH);
+  } else {
+    ctx.fillStyle = 'rgba(20,20,40,0.95)';
+    drawRoundRect(ctx, popX, popY, popW, popH, 12);
+    ctx.fill();
+  }
+
+  // 标题
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('特殊建筑商店', W / 2, popY + 30 * game.scale);
+
+  // 分类标签
+  const tabs = [
+    { key: 'defense', label: '防御' },
+    { key: 'passive', label: '被动' },
+    { key: 'attack', label: '攻击' },
+  ];
+  const tabW = popW / 3;
+  const tabY = popY + 50 * game.scale;
+  game._shopTabs = [];
+  tabs.forEach((tab, i) => {
+    const tx = popX + i * tabW;
+    const active = game.ui.shopTab === tab.key;
+    ctx.fillStyle = active ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
+    ctx.fillRect(tx, tabY, tabW, 30 * game.scale);
+    ctx.fillStyle = active ? '#fff' : '#888';
+    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText(tab.label, tx + tabW / 2, tabY + 15 * game.scale);
+    game._shopTabs.push({ x: tx, y: tabY, w: tabW, h: 30 * game.scale, key: tab.key });
+  });
+
+  // 商品列表
+  const listY = tabY + 40 * game.scale;
+  const itemH = 60 * game.scale;
+  game._shopItems = [];
+  const specials = Object.entries(CONFIG.SPECIAL_BUILDINGS)
+    .filter(([_, v]) => v.category === game.ui.shopTab);
+
+  specials.forEach(([key, data], i) => {
+    const iy = listY + i * (itemH + 8 * game.scale);
+    if (iy + itemH > popY + popH - 50 * game.scale) return;
+
+    const owned = !!game.specials[key];
+    ctx.fillStyle = owned ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.05)';
+    drawRoundRect(ctx, popX + 10 * game.scale, iy, popW - 20 * game.scale, itemH, 6);
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText(data.name, popX + 20 * game.scale, iy + 20 * game.scale);
+    ctx.fillStyle = '#aaa';
+    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.fillText(data.desc, popX + 20 * game.scale, iy + 40 * game.scale);
+
+    // 购买按钮
+    const buyBtnW = 60 * game.scale;
+    const buyBtnH = 30 * game.scale;
+    const buyBtnX = popX + popW - 80 * game.scale;
+    const buyBtnY = iy + (itemH - buyBtnH) / 2;
+
+    if (owned) {
+      ctx.fillStyle = '#333';
+      drawRoundRect(ctx, buyBtnX, buyBtnY, buyBtnW, buyBtnH, 4);
+      ctx.fill();
+      ctx.fillStyle = '#888';
+      ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText('已拥有', buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
+    } else {
+      const canAfford = game.power >= data.cost;
+      ctx.fillStyle = canAfford ? '#4CAF50' : '#555';
+      drawRoundRect(ctx, buyBtnX, buyBtnY, buyBtnW, buyBtnH, 4);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.fillText(data.cost + '电', buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
+    }
+
+    game._shopItems.push({
+      x: buyBtnX, y: buyBtnY, w: buyBtnW, h: buyBtnH,
+      key, cost: data.cost, owned,
+    });
+  });
+
+  // 关闭按钮
+  const closeSize = 30 * game.scale;
+  const closeX = popX + popW - closeSize - 5;
+  const closeY = popY + 5;
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(closeX + closeSize / 2, closeY + closeSize / 2, closeSize / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText('✕', closeX + closeSize / 2, closeY + closeSize / 2);
+  game._shopCloseBtn = { x: closeX, y: closeY, w: closeSize, h: closeSize };
+}
+
+/** 渲染暂停界面 */
+function renderPaused(ctx) {
+  const W = game.W, H = game.H;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(32 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('游戏暂停', W / 2, H * 0.35);
+
+  // 继续按钮
+  const btnW = 180 * game.scale;
+  const btnH = 50 * game.scale;
+  const btnX = W / 2 - btnW / 2;
+  const btnY = H * 0.48;
+  ctx.fillStyle = '#4CAF50';
+  drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.fillText('继续游戏', W / 2, btnY + btnH / 2);
+  game._resumeBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  // 返回主菜单
+  const btn2Y = H * 0.6;
+  ctx.fillStyle = '#c62828';
+  drawRoundRect(ctx, btnX, btn2Y, btnW, btnH, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('返回主菜单', W / 2, btn2Y + btnH / 2);
+  game._quitBtn = { x: btnX, y: btn2Y, w: btnW, h: btnH };
+}
+
+/** 渲染结算界面 */
+function renderResult(ctx) {
+  const W = game.W, H = game.H;
+  const isWin = game.result === 'win';
+
+  // 背景
+  const bgImg = isWin ? game.images.ui_WIN_RESULT : game.images.ui_LOSE_RESULT;
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = isWin ? '#1a2a1a' : '#2a1a1a';
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 结果文字
+  ctx.fillStyle = isWin ? '#4CAF50' : '#F44336';
+  ctx.font = `bold ${Math.floor(36 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(isWin ? '成功存活！' : '被猛鬼捕获...', W / 2, H * 0.25);
+
+  // 统计
+  ctx.fillStyle = '#ddd';
+  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  const stats = game.resultStats;
+  const mins = Math.floor(stats.timeSurvived / 60);
+  const secs = Math.floor(stats.timeSurvived % 60);
+  ctx.fillText(`存活时间: ${mins}分${secs}秒`, W / 2, H * 0.4);
+  ctx.fillText(`击杀Boss: ${stats.bossesKilled}`, W / 2, H * 0.47);
+  ctx.fillText(`获得金币: ${formatNum(stats.goldEarned)}`, W / 2, H * 0.54);
+
+  // 领取按钮
+  const btnW = 180 * game.scale;
+  const btnH = 50 * game.scale;
+  const btnX = W / 2 - btnW / 2;
+  const btnY = H * 0.68;
+
+  if (game.images.ui_CLAIM_BTN) {
+    ctx.drawImage(game.images.ui_CLAIM_BTN, btnX, btnY, btnW, btnH);
+  } else {
+    ctx.fillStyle = '#FF9800';
+    drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('领取奖励', W / 2, btnY + btnH / 2);
+  game._claimBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+}
+
+// ========== UI系统 ==========
+
+/** 判断点是否在矩形内 */
+function hitTest(px, py, rect) {
+  if (!rect) return false;
+  return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+}
+
+/** 判断格子是否可放置建筑 */
+function canPlaceAt(col, row) {
+  // 门的位置
+  if (col === 0 && row === 2) return false;
+  // 床的位置
+  if (col === 1 && row === 2) return false;
+  // 已有建筑
+  if (game.grid[row] && game.grid[row][col]) return false;
+  return true;
+}
+
+/** 放置建筑 */
+function placeBuilding(type, col, row) {
+  let building = null;
+  switch (type) {
+    case 'tower':
+      if (game.gold < CONFIG.TOWER_DATA[0].cost) {
+        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
+        return false;
+      }
+      game.gold -= CONFIG.TOWER_DATA[0].cost;
+      building = new Tower(col, row);
+      break;
+    case 'generator':
+      if (game.gold < CONFIG.GENERATOR_DATA[0].cost) {
+        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
+        return false;
+      }
+      game.gold -= CONFIG.GENERATOR_DATA[0].cost;
+      building = new Generator(col, row);
+      break;
+    case 'mine_0': case 'mine_1': case 'mine_2': case 'mine_3': {
+      const idx = parseInt(type.split('_')[1]);
+      const mineData = CONFIG.MINE_DATA[idx];
+      if (game.gold < mineData.cost) {
+        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
+        return false;
+      }
+      game.gold -= mineData.cost;
+      building = new Mine(col, row, idx);
+      break;
+    }
+    case 'repair':
+      if (game.power < CONFIG.REPAIR_COST) {
+        addFloatText(gridToX(col), gridToY(row), '电力不足!', '#F44336');
+        return false;
+      }
+      game.power -= CONFIG.REPAIR_COST;
+      building = new RepairStation(col, row);
+      game.specials.repair = true;
+      break;
+    default:
+      return false;
+  }
+
+  if (building) {
+    game.buildings.push(building);
+    game.grid[row][col] = building;
+    game.sfx.build();
+    addFloatText(gridToX(col), gridToY(row), '建造完成!', '#4CAF50');
+    addParticles(gridToX(col), gridToY(row), '#4CAF50', 8);
+    return true;
+  }
   return false;
 }
 
-function drawProjectile(p) {
-  ctx.fillStyle = p.color;
-  ctx.shadowColor = p.color; ctx.shadowBlur = 8;
-  ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
-  ctx.shadowBlur = 0;
-}
+/** 处理点击/触摸事件 */
+function handleClick(px, py) {
+  game.sfx.resume();
 
-function damageEnemy(e, dmg) {
-  e.hp -= dmg;
-  e.hitFlash = 8;
-  if (e.hp <= 0) {
-    kills++;
-    const reward = e.reward;
-    coins += reward;
-    totalCoinsEarned += reward;
-    spawnCoinPopup(e.x, e.y, reward);
-    spawnDeathParticles(e.x, e.y);
-    enemies.splice(enemies.indexOf(e), 1);
-    updateUI();
+  switch (game.state) {
+    case STATE.MENU:
+      handleMenuClick(px, py);
+      break;
+    case STATE.SELECT_CHAR:
+      handleCharSelectClick(px, py);
+      break;
+    case STATE.SELECT_LEVEL:
+      handleLevelSelectClick(px, py);
+      break;
+    case STATE.PLAYING:
+      handlePlayingClick(px, py);
+      break;
+    case STATE.PAUSED:
+      handlePausedClick(px, py);
+      break;
+    case STATE.RESULT:
+      handleResultClick(px, py);
+      break;
   }
 }
 
-function spawnDeathParticles(x, y) {
-  for (let i = 0; i < 6; i++) {
-    const a = Math.random()*Math.PI*2;
-    particles.push({ x, y, vx:Math.cos(a)*(1+Math.random()*2), vy:Math.sin(a)*(1+Math.random()*2), life:30+Math.random()*20, color:'#8888cc', size:8 });
+function handleMenuClick(px, py) {
+  if (hitTest(px, py, game._menuBtn)) {
+    game.state = STATE.SELECT_CHAR;
+    game.sfx.build();
   }
 }
 
-// ========== PARTICLES ==========
-function spawnParticle(x, y, color, text) {
-  particles.push({ x, y, vx:(Math.random()-.5)*2, vy:-1-Math.random()*2, life:30, color, text, size:16 });
-}
-function spawnCoinPopup(x, y, amount) {
-  const el = document.createElement('div');
-  el.className = 'coin-popup';
-  el.textContent = '+' + amount;
-  el.style.left = (x - canvas.getBoundingClientRect().left + canvas.offsetLeft) + 'px';
-  el.style.top = (y - canvas.getBoundingClientRect().top + canvas.offsetTop - 20) + 'px';
-  el.style.position = 'fixed';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1000);
-}
-
-function updateParticle(p, dt) {
-  p.x += p.vx * dt * .05;
-  p.y += p.vy * dt * .05;
-  p.life -= dt;
-  return p.life <= 0;
-}
-
-function drawParticle(p) {
-  ctx.globalAlpha = Math.max(0, p.life / 30);
-  if (p.text) {
-    ctx.font = p.size + 'px serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = p.color;
-    ctx.fillText(p.text, p.x, p.y);
-  } else {
-    ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-}
-
-// ========== RENDER ==========
-function render() {
-  ctx.clearRect(0, 0, W, H);
-
-  // Dark background with vignette
-  const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*.7);
-  bgGrad.addColorStop(0, '#0f0f1a');
-  bgGrad.addColorStop(1, '#050508');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // Grid floor
-  ctx.strokeStyle = '#1a1a2e';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 40) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-
-  // Room (dorm building)
-  drawRoom();
-
-  // Tower range preview
-  if (selectedTower >= 0 && canPlace) {
-    const t = TOWER_TYPES[selectedTower];
-    ctx.strokeStyle = t.color + '55';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6,6]);
-    ctx.beginPath(); ctx.arc(mouseX, mouseY, t.range, 0, Math.PI*2); ctx.stroke();
-    ctx.setLineDash([]);
-    // Place preview
-    ctx.globalAlpha = .5;
-    ctx.fillStyle = canPlace ? t.color : '#ff0000';
-    ctx.beginPath(); ctx.arc(mouseX, mouseY, 16, 0, Math.PI*2); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-
-  // Towers
-  towers.forEach(tw => drawTower(tw));
-
-  // Enemies
-  enemies.forEach(e => drawEnemy(e));
-
-  // Projectiles
-  projectiles.forEach(p => drawProjectile(p));
-
-  // Particles
-  particles.forEach(p => drawParticle(p));
-
-  // Between wave countdown
-  if (betweenWaves && !gameOver) {
-    const secs = Math.ceil(betweenWaveTimer / 60);
-    ctx.fillStyle = 'rgba(0,0,0,.4)';
-    ctx.fillRect(W/2-80, H/2-20, 160, 40);
-    ctx.fillStyle = '#ffd700';
-    ctx.font = 'bold 18px Microsoft YaHei';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(`下一波 ${secs}s`, W/2, H/2);
+function handleCharSelectClick(px, py) {
+  if (!game._charAreas) return;
+  if (hitTest(px, py, game._charAreas.male)) {
+    game.charGender = 'male';
+  } else if (hitTest(px, py, game._charAreas.female)) {
+    game.charGender = 'female';
+  } else if (hitTest(px, py, game._charAreas.confirm)) {
+    game.state = STATE.SELECT_LEVEL;
+    game.sfx.build();
   }
 }
 
-function drawRoom() {
-  const x = roomX, y = roomY, w = roomW, h = roomH;
-  const cx = x + w/2, cy = y + h/2;
-
-  // Room glow (danger indicator)
-  const hpRatio = roomHp / maxRoomHp;
-  const glowColor = hpRatio > .5 ? 'rgba(68,255,136,.08)' : (hpRatio > .25 ? 'rgba(255,170,0,.1)' : 'rgba(255,0,0,.18)');
-  const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w,h)*.7);
-  glowGrad.addColorStop(0, glowColor);
-  glowGrad.addColorStop(1, 'transparent');
-  ctx.fillStyle = glowGrad;
-  ctx.fillRect(x - 40, y - 40, w + 80, h + 80);
-
-  // Building wall
-  ctx.fillStyle = '#1a1a2e';
-  ctx.strokeStyle = '#333366';
-  ctx.lineWidth = 3;
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeRect(x, y, w, h);
-
-  // Brick pattern
-  ctx.strokeStyle = '#252540';
-  ctx.lineWidth = 1;
-  for (let row = 0; row < Math.floor(h/20); row++) {
-    const yb = y + row * 20;
-    ctx.beginPath(); ctx.moveTo(x, yb); ctx.lineTo(x+w, yb); ctx.stroke();
-    const offset = (row % 2) * 20;
-    for (let col = 0; col < Math.ceil(w/40)+1; col++) {
-      const xb = x + col * 40 - offset;
-      ctx.beginPath(); ctx.moveTo(xb, yb); ctx.lineTo(xb, yb+20); ctx.stroke();
-    }
-  }
-
-  // Windows/doors
-  ctx.fillStyle = '#0a0a15';
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.lineWidth = 2;
-  // Door
-  ctx.fillRect(cx - 20, y + h - 60, 40, 60);
-  ctx.strokeRect(cx - 20, y + h - 60, 40, 60);
-
-  // Windows
-  for (let i = 0; i < 2; i++) {
-    const wx = x + w * .2 + i * w * .6 - 25;
-    ctx.fillRect(wx, y + 20, 50, 40);
-    ctx.strokeRect(wx, y + 20, 50, 40);
-    // Window cross
-    ctx.beginPath(); ctx.moveTo(wx+25, y+20); ctx.lineTo(wx+25, y+60); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(wx, y+40); ctx.lineTo(wx+50, y+40); ctx.stroke();
-  }
-
-  // Roof
-  ctx.fillStyle = '#2a2a44';
-  ctx.beginPath();
-  ctx.moveTo(x - 10, y);
-  ctx.lineTo(cx, y - 30);
-  ctx.lineTo(x + w + 10, y);
-  ctx.closePath();
-  ctx.fill();
-
-  // HP-based damage cracks
-  if (hpRatio < .75) {
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-    const cracks = Math.ceil((1-hpRatio) * 6);
-    for (let i = 0; i < cracks; i++) {
-      const sx = x + 20 + i * (w-40) / cracks;
-      ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx+5, y+30); ctx.lineTo(sx-3, y+50); ctx.stroke();
-    }
-  }
-
-  // "宿舍" label
-  ctx.fillStyle = '#444466';
-  ctx.font = 'bold 14px Microsoft YaHei';
-  ctx.textAlign = 'center';
-  ctx.fillText('宿 舍', cx, y + h/2);
-
-  // Danger pulse when low HP
-  if (hpRatio < .3) {
-    const pulse = (Math.sin(Date.now()/200) + 1) * .5;
-    ctx.strokeStyle = `rgba(255,0,0,${pulse*.5})`;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x-5, y-5, w+10, h+10);
-  }
-}
-
-// ========== GAME LOOP ==========
-function gameLoop(timestamp) {
-  if (!gameRunning) { requestAnimationFrame(gameLoop); return; }
-  const dt = Math.min((timestamp - lastTime) / 16.67, 3); // normalize to ~60fps
-  lastTime = timestamp;
-
-  // Between waves
-  if (betweenWaves) {
-    betweenWaveTimer -= dt;
-    if (betweenWaveTimer <= 0) {
-      startWave(wave);
-    }
-  } else {
-    // Spawn enemies
-    if (spawnQueue.length > 0) {
-      spawnTimer += dt;
-      if (spawnTimer >= 40) {
-        spawnTimer = 0;
-        spawnEnemy(spawnQueue.shift());
+function handleLevelSelectClick(px, py) {
+  if (game._levelAreas) {
+    for (const area of game._levelAreas) {
+      if (hitTest(px, py, area)) {
+        game.levelIndex = area.index;
+        game.sfx.build();
+        return;
       }
     }
+  }
+  if (hitTest(px, py, game._levelStartBtn)) {
+    startGame();
+    game.sfx.build();
+  }
+}
 
-    // Check wave complete
-    if (spawnQueue.length === 0 && enemies.length === 0) {
-      wave++;
-      betweenWaves = true;
-      betweenWaveTimer = 150; // 2.5s between waves
-      announceWave(wave);
-      // Bonus coins
-      const bonus = wave * 5;
-      coins += bonus;
-      totalCoinsEarned += bonus;
-      spawnParticle(W/2, H/2, '#ffd700', `+${bonus} Bonus!`);
-      updateUI();
+function handlePlayingClick(px, py) {
+  // 关闭信息弹窗
+  if (game.ui.infoPopup) {
+    if (hitTest(px, py, game._closePopupBtn)) {
+      game.ui.infoPopup = null;
+      return;
+    }
+    if (game._upgradeBtn && hitTest(px, py, game._upgradeBtn)) {
+      const b = game._upgradeBtn.building;
+      if (b.type === 'bed') b.upgrade();
+      else if (b.type === 'tower') b.upgrade();
+      else if (b.type === 'generator') b.upgrade();
+      else if (b.type === 'door') b.upgrade();
+      return;
+    }
+    // 点击弹窗外关闭
+    game.ui.infoPopup = null;
+    return;
+  }
+
+  // 商店弹窗
+  if (game.ui.shopOpen) {
+    if (hitTest(px, py, game._shopCloseBtn)) {
+      game.ui.shopOpen = false;
+      return;
+    }
+    // 标签切换
+    if (game._shopTabs) {
+      for (const tab of game._shopTabs) {
+        if (hitTest(px, py, tab)) {
+          game.ui.shopTab = tab.key;
+          return;
+        }
+      }
+    }
+    // 购买商品
+    if (game._shopItems) {
+      for (const item of game._shopItems) {
+        if (hitTest(px, py, item) && !item.owned) {
+          if (game.power >= item.cost) {
+            game.power -= item.cost;
+            game.specials[item.key] = true;
+            game.sfx.upgrade();
+            addFloatText(game.W / 2, game.H / 2, '购买成功!', '#4CAF50');
+          } else {
+            addFloatText(game.W / 2, game.H / 2, '电力不足!', '#F44336');
+          }
+          return;
+        }
+      }
+    }
+    return;
+  }
+
+  // 暂停按钮
+  if (hitTest(px, py, game._pauseBtn)) {
+    game.state = STATE.PAUSED;
+    return;
+  }
+
+  // 建造面板按钮
+  if (game._buildBtns) {
+    for (const btn of game._buildBtns) {
+      if (hitTest(px, py, btn)) {
+        if (btn.type === 'shop') {
+          game.ui.shopOpen = true;
+          game.ui.selectedBuildType = null;
+        } else {
+          game.ui.selectedBuildType = game.ui.selectedBuildType === btn.type ? null : btn.type;
+          game.ui.selectedCell = null;
+        }
+        return;
+      }
     }
   }
 
-  // Update towers
-  towers.forEach(tw => updateTower(tw, dt));
+  // 点击网格
+  const gridPos = posToGrid(px, py);
+  if (gridPos) {
+    const { col, row } = gridPos;
 
-  // Update enemies
-  enemies.forEach(e => updateEnemy(e, dt));
+    // 点击床 - 上床/下床
+    if (col === 1 && row === 2 && game.bed) {
+      game.player.inBed = !game.player.inBed;
+      game.sfx.build();
+      return;
+    }
 
-  // Update projectiles
-  projectiles = projectiles.filter(p => !updateProjectile(p, dt));
+    // 点击门 - 显示门信息
+    if (col === 0 && row === 2 && game.door) {
+      game.ui.infoPopup = game.door;
+      game.ui.selectedBuildType = null;
+      return;
+    }
 
-  // Update particles
-  particles = particles.filter(p => !updateParticle(p, dt));
+    // 已有建筑 - 显示信息
+    if (game.grid[row][col]) {
+      game.ui.infoPopup = game.grid[row][col];
+      game.ui.selectedBuildType = null;
+      return;
+    }
 
+    // 放置建筑
+    if (game.ui.selectedBuildType && canPlaceAt(col, row)) {
+      placeBuilding(game.ui.selectedBuildType, col, row);
+      game.ui.selectedBuildType = null;
+      game.ui.selectedCell = null;
+      return;
+    }
+
+    // 选中格子（建造模式）
+    if (game.ui.selectedBuildType) {
+      game.ui.selectedCell = { col, row };
+    }
+  }
+}
+
+function handlePausedClick(px, py) {
+  if (hitTest(px, py, game._resumeBtn)) {
+    game.state = STATE.PLAYING;
+    game.lastTimestamp = performance.now();
+  } else if (hitTest(px, py, game._quitBtn)) {
+    resetGame();
+    game.state = STATE.MENU;
+  }
+}
+
+function handleResultClick(px, py) {
+  if (hitTest(px, py, game._claimBtn)) {
+    resetGame();
+    game.state = STATE.MENU;
+    game.sfx.build();
+  }
+}
+
+// ========== 游戏主逻辑 ==========
+
+/** 初始化游戏 */
+function startGame() {
+  resetGame();
+  game.state = STATE.PLAYING;
+
+  // 初始化网格
+  game.grid = [];
+  for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
+    game.grid[r] = [];
+    for (let c = 0; c < CONFIG.GRID_COLS; c++) {
+      game.grid[r][c] = null;
+    }
+  }
+
+  // 创建门
+  game.door = new Door();
+  game.grid[2][0] = game.door;
+
+  // 创建床
+  game.bed = new Bed(1, 2);
+  game.buildings.push(game.bed);
+  game.grid[2][1] = game.bed;
+
+  // 创建玩家
+  game.player = { col: 1, row: 2, inBed: true };
+
+  game.lastTimestamp = performance.now();
+}
+
+/** 重置游戏数据 */
+function resetGame() {
+  game.gold = CONFIG.INIT_GOLD;
+  game.power = CONFIG.INIT_POWER;
+  game.gameTime = 0;
+  game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
+  game.buildings = [];
+  game.bosses = [];
+  game.projectiles = [];
+  game.floatTexts = [];
+  game.particles = [];
+  game.grid = [];
+  game.door = null;
+  game.bed = null;
+  game.player = null;
+  game.specials = {};
+  game.result = null;
+  game.resultStats = { bossesKilled: 0, timeSurvived: 0, goldEarned: 0 };
+  game.ui = {
+    buildPanelOpen: false,
+    selectedBuildType: null,
+    selectedCell: null,
+    infoPopup: null,
+    shopOpen: false,
+    shopTab: 'defense',
+  };
+  game.shakeAmount = 0;
+  game.shakeTimer = 0;
+}
+
+/** 生成Boss */
+function spawnBoss() {
+  const levelData = CONFIG.LEVELS[game.levelIndex];
+  const boss = new Boss(game.levelIndex, 0);
+  game.bosses.push(boss);
+  addFloatText(boss.x, boss.y - 30, 'Boss出现!', '#F44336');
+  addParticles(boss.x, boss.y, '#F44336', 12);
+  game.sfx.ghost();
+}
+
+/** 更新资源产出 */
+function updateResources(dt) {
+  let goldIncome = 0;
+  let powerIncome = 0;
+  let powerConsume = 0;
+
+  // 床产出（玩家在床上时才产出）
+  if (game.bed && game.player && game.player.inBed) {
+    goldIncome += game.bed.income;
+  }
+
+  // 发电机产出电力
+  for (const b of game.buildings) {
+    if (b.type === 'generator') {
+      powerIncome += b.output;
+    }
+  }
+
+  // 统计矿场电力消耗
+  for (const b of game.buildings) {
+    if (b.type === 'mine') {
+      powerConsume += b.powerCost;
+    }
+  }
+
+  // 应用电力产出
+  game.power += powerIncome * dt;
+
+  // 电力充足时矿场才产出金币
+  const powerSufficient = game.power > 0 || powerIncome >= powerConsume;
+  if (powerSufficient) {
+    for (const b of game.buildings) {
+      if (b.type === 'mine') {
+        goldIncome += b.income;
+      }
+    }
+    game.power -= powerConsume * dt;
+  } else {
+    // 电力不足：矿场停工，仅消耗已有电力的一半
+    game.power -= powerConsume * dt * 0.5;
+  }
+
+  game.power = Math.max(0, game.power);
+
+  // 应用金币产出
+  game.gold += goldIncome * dt;
+  game.resultStats.goldEarned += goldIncome * dt;
+}
+
+/** 检查胜负条件 */
+function checkGameEnd() {
+  // 门被攻破 → 失败
+  if (game.door && game.door.hp <= 0) {
+    game.result = 'lose';
+    game.state = STATE.RESULT;
+    game.resultStats.timeSurvived = game.gameTime;
+    game.sfx.lose();
+  }
+  // 胜利条件已在Boss.takeDamage中处理：击杀撤退中的boss即获胜
+}
+
+/** 主更新逻辑 */
+function update(dt) {
+  if (game.state !== STATE.PLAYING) return;
+
+  game.gameTime += dt;
+
+  // 动画帧
+  game.animTimer += dt;
+  game.animFrame = Math.floor(game.animTimer * 4);
+
+  // 准备期结束，开始刷Boss
+  if (game.gameTime >= CONFIG.PREPARE_TIME) {
+    game.bossSpawnTimer -= dt;
+    if (game.bossSpawnTimer <= 0) {
+      spawnBoss();
+      game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
+    }
+  }
+
+  // 更新资源
+  updateResources(dt);
+
+  // 更新门
+  if (game.door) game.door.update(dt);
+
+  // 更新建筑
+  for (const b of game.buildings) {
+    if (b.type === 'tower') b.update(dt);
+  }
+
+  // 更新Boss
+  for (const boss of game.bosses) {
+    boss.update(dt);
+  }
+
+  // 更新弹道
+  for (const p of game.projectiles) {
+    p.update(dt);
+  }
+
+  // 清理死亡实体（已死亡且不在回血状态的boss移除）
+  game.projectiles = game.projectiles.filter(p => !p.dead);
+  game.bosses = game.bosses.filter(b => !b.dead);
+
+  // 更新飘字
+  for (const ft of game.floatTexts) {
+    ft.update(dt);
+  }
+  game.floatTexts = game.floatTexts.filter(ft => ft.life > 0);
+
+  // 更新粒子
+  for (const p of game.particles) {
+    p.update(dt);
+  }
+  game.particles = game.particles.filter(p => p.life > 0);
+
+  // 氛围效果
+  updateAtmosphere(dt);
+
+  // 震动衰减
+  if (game.shakeTimer > 0) {
+    game.shakeTimer -= dt;
+    game.shakeAmount *= 0.9;
+  } else {
+    game.shakeAmount = 0;
+  }
+
+  // 检查胜负
+  checkGameEnd();
+}
+
+/** 更新氛围效果 */
+function updateAtmosphere(dt) {
+  // 闪烁
+  game.flickerTimer -= dt;
+  if (game.flickerTimer <= 0) {
+    game.flickerAlpha = Math.random() > 0.7 ? 1 : 0;
+    game.flickerTimer = randRange(2, 8);
+  }
+  game.flickerAlpha *= 0.95;
+
+  // 幽灵影子
+  game.ghostTimer -= dt;
+  if (game.ghostTimer <= 0) {
+    game.ghostAlpha = Math.random() > 0.6 ? 1 : 0;
+    if (game.ghostAlpha > 0) {
+      const area = getGameArea();
+      game.ghostX = randRange(area.areaX, area.areaX + area.areaW);
+      game.ghostY = randRange(area.areaY, area.areaY + area.areaH);
+    }
+    game.ghostTimer = randRange(5, 15);
+  }
+  game.ghostAlpha *= 0.97;
+
+  // Boss靠近时屏幕抖动
+  for (const boss of game.bosses) {
+    if (!boss.dead && !boss.retreating && boss.isAttacking) {
+      game.shakeAmount = Math.max(game.shakeAmount, 2);
+      game.shakeTimer = 0.1;
+    }
+  }
+}
+
+// ========== 初始化与主循环 ==========
+
+/** 初始化Canvas */
+function initCanvas() {
+  game.canvas = document.getElementById('gameCanvas');
+  game.ctx = game.canvas.getContext('2d');
+  resizeCanvas();
+}
+
+/** 响应式调整Canvas大小 */
+function resizeCanvas() {
+  game.dpr = window.devicePixelRatio || 1;
+  game.W = window.innerWidth;
+  game.H = window.innerHeight;
+  game.canvas.width = game.W * game.dpr;
+  game.canvas.height = game.H * game.dpr;
+  game.canvas.style.width = game.W + 'px';
+  game.canvas.style.height = game.H + 'px';
+  game.ctx.setTransform(game.dpr, 0, 0, game.dpr, 0, 0);
+  // 缩放因子，以800px宽度为基准
+  game.scale = Math.min(game.W, game.H) / 600;
+}
+
+/** 主渲染 */
+function render() {
+  const ctx = game.ctx;
+  ctx.clearRect(0, 0, game.W, game.H);
+
+  switch (game.state) {
+    case STATE.MENU:
+      renderMenu(ctx);
+      break;
+    case STATE.SELECT_CHAR:
+      renderSelectChar(ctx);
+      break;
+    case STATE.SELECT_LEVEL:
+      renderSelectLevel(ctx);
+      break;
+    case STATE.PLAYING:
+      renderPlaying(ctx);
+      break;
+    case STATE.PAUSED:
+      renderPlaying(ctx);
+      renderPaused(ctx);
+      break;
+    case STATE.RESULT:
+      renderResult(ctx);
+      break;
+  }
+}
+
+/** 游戏主循环 */
+function gameLoop(timestamp) {
+  if (!game.lastTimestamp) game.lastTimestamp = timestamp;
+  const rawDt = (timestamp - game.lastTimestamp) / 1000;
+  game.lastTimestamp = timestamp;
+  const dt = Math.min(rawDt, 0.1); // 限制最大dt，避免切换状态时跳帧
+
+  update(dt);
   render();
+
   requestAnimationFrame(gameLoop);
 }
 
-// ========== UI ==========
-function updateUI() {
-  document.getElementById('hWave').textContent = wave;
-  document.getElementById('hCoin').textContent = coins;
-  document.getElementById('hHp').textContent = Math.ceil(roomHp);
-  document.getElementById('hKill').textContent = kills;
+/** 绑定事件 */
+function bindEvents() {
+  // 鼠标点击
+  game.canvas.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleClick(e.clientX, e.clientY);
+  });
 
-  const hpRatio = roomHp / maxRoomHp;
-  const hpFill = document.getElementById('roomHpFill');
-  hpFill.style.width = (hpRatio * 100) + '%';
-  hpFill.style.background = hpRatio > .5 ? 'linear-gradient(90deg,#44ff88,#88ffaa)' : (hpRatio > .25 ? 'linear-gradient(90deg,#ffaa00,#ffcc44)' : 'linear-gradient(90deg,#ff4444,#ff8844)');
+  // 触摸事件
+  game.canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (e.touches.length > 0) {
+      handleClick(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: false });
 
-  // Update tower button states
-  for (let i = 0; i < 5; i++) {
-    const btn = document.getElementById('btn' + i);
-    const cost = TOWER_COSTS[i];
-    btn.classList.toggle('selected', selectedTower === i);
-    btn.disabled = coins < cost;
-    document.getElementById('cost' + i).textContent = cost;
-  }
+  // 窗口大小变化
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+  });
 }
 
-function selectTower(idx) {
-  if (idx === selectedTower) { selectedTower = -1; }
-  else { selectedTower = idx; }
-  updateUI();
+/** 启动游戏 */
+async function main() {
+  initCanvas();
+  bindEvents();
+
+  // 加载素材（不阻塞启动）
+  loadAllAssets();
+
+  game.lastTimestamp = performance.now();
+  requestAnimationFrame(gameLoop);
 }
 
-function updateCanPlace() {
-  // Can't place inside room or outside canvas
-  const roomCX = roomX + roomW/2, roomCY = roomY + roomH/2;
-  const dToRoom = Math.sqrt((mouseX-roomCX)**2 + (mouseY-roomCY)**2);
-  const roomRadius = Math.min(roomW, roomH) * .45;
-  canPlace = (selectedTower >= 0) && (dToRoom >= roomRadius) &&
-             (mouseX > 10 && mouseX < W-10 && mouseY > 10 && mouseY < H-10);
-}
-
-function flashDamage() {
-  document.body.classList.add('damage-flash');
-  setTimeout(() => document.body.classList.remove('damage-flash'), 300);
-}
-
-function endGame() {
-  gameRunning = false;
-  gameOver = true;
-  const ov = document.getElementById('overlay');
-  document.getElementById('ovTitle').textContent = '宿舍沦陷';
-  document.getElementById('ovTitle').className = '';
-  document.getElementById('ovSubtitle').textContent = `猛鬼攻破了第 ${wave} 波...再接再厉！`;
-  document.getElementById('ovWave').textContent = wave;
-  document.getElementById('ovKill').textContent = kills;
-  document.getElementById('ovCoin').textContent = totalCoinsEarned;
-  ov.style.display = 'flex';
-}
-
-function restartGame() {
-  document.getElementById('overlay').style.display = 'none';
-  startGame();
-}
-
-function toggleFullscreen() {
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-  else document.exitFullscreen();
-}
-
-init();
+// 启动
+main();
 </script>
 </body>
 </html>
