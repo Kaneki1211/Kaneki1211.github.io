@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#131024">
+<title>婚礼邀请函 · 汪政 & 李璟 · 星夜月光</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Parisienne&display=swap" rel="stylesheet">
+<style>
+/* ================= 主题变量：暮夜蓝紫 × 月光金 × 玫瑰粉 ================= */
+:root{--night:#131024;--plum:#241b3f;--violet:#3a2c5c;--rose:#e7a6b8;--rose-deep:#c9768f;--gold:#e2c288;--gold-soft:#f4e3bd;--cream:#f8f2e7;--ink:#372c48;--muted:#8d82a3}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--night);font-family:"Noto Serif SC","Songti SC",serif;color:var(--cream)}
+button{font:inherit;border:none;background:none;color:inherit;cursor:pointer}
+button:focus-visible{outline:1px solid var(--gold);outline-offset:3px}
+/* 颗粒噪点：给暗色底增加胶片质感 */
+.grain{position:fixed;inset:0;z-index:200;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ================= 音乐播放器：唱片按钮（播放时旋转+声波扩散环） ================= */
+.music-btn{position:fixed;top:max(18px,env(safe-area-inset-top));right:20px;z-index:210;width:46px;height:46px;border-radius:50%;border:1px solid rgba(226,194,136,.5);color:var(--gold-soft);background:rgba(19,16,36,.55);backdrop-filter:blur(12px);cursor:pointer;display:none;place-items:center;transition:transform .35s,border-color .35s;opacity:0;pointer-events:none}
+.music-btn.show{display:grid;opacity:1;pointer-events:auto;animation:alphaIn .6s .2s both}
+.music-btn:hover{transform:scale(1.07);border-color:rgba(244,227,189,.85)}
+.music-btn .disc{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 32%,#f4e3bd 0,#caa15e 34%,#4b3a6b 36%,#241b3f 100%);position:relative;animation:discSpin 5.5s linear infinite;animation-play-state:paused;box-shadow:0 0 10px rgba(226,194,136,.28)}
+.music-btn .disc::after{content:"";position:absolute;inset:38%;border-radius:50%;background:var(--night)}
+.music-btn.playing .disc{animation-play-state:running}
+.music-btn.muted .disc{filter:grayscale(.6) brightness(.72);animation:none}
+.music-btn.loading .disc{animation:discSpin 1.4s linear infinite}
+.music-btn.error{border-color:rgba(201,118,143,.8)}
+/* 声波扩散环：仅在播放时出现 */
+.music-btn.playing::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:1px solid rgba(226,194,136,.55);animation:ringPulse 1.9s ease-out infinite}
+.music-btn.playing::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:1px solid rgba(226,194,136,.4);animation:ringPulse 1.9s .6s ease-out infinite}
+
+/* ================= 开场：星空 → 信封 两段式 ================= */
+.intro{position:fixed;inset:0;z-index:80;background:radial-gradient(ellipse at 50% 30%,#2c2050 0,#1a1330 46%,#0d0a1c 100%);overflow:hidden;transition:opacity 1s,visibility 1s}
+.intro.done{opacity:0;visibility:hidden;pointer-events:none}
+.ambient{position:absolute;inset:0;pointer-events:none}
+/* 星空：JS 撒点，闪烁错峰 */
+.starfield{position:absolute;inset:0}
+.star{position:absolute;border-radius:50%;background:var(--gold-soft);animation:twinkle 3.4s ease-in-out infinite;opacity:.35}
+/* 花瓣：玫瑰粉渐变，随机漂移 */
+.petal-field{position:absolute;inset:0;overflow:hidden}
+.petal{position:absolute;top:-8vh;width:10px;height:15px;border-radius:75% 15% 70% 25%;background:linear-gradient(145deg,#eeb7c6,#a8556f);opacity:.55;animation:petalFall linear infinite}
+@keyframes petalFall{0%{transform:translate3d(0,-8vh,0) rotate(0)}100%{transform:translate3d(var(--drift,40px),112vh,0) rotate(300deg)}}
+@keyframes twinkle{0%,100%{opacity:.18;transform:scale(.8)}50%{opacity:.9;transform:scale(1.15)}}
+@keyframes alphaIn{from{opacity:0}to{opacity:1}}
+@keyframes alphaRise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes hint{50%{opacity:.3}}
+@keyframes discSpin{to{transform:rotate(360deg)}}
+@keyframes ringPulse{from{transform:scale(1);opacity:.75}to{transform:scale(1.75);opacity:0}}
+@keyframes orbitSpin{to{transform:rotate(360deg)}}
+@keyframes orbitSpinRev{to{transform:rotate(-360deg)}}
+@keyframes envelopeArrive{from{opacity:0;transform:translate3d(52vw,26vh,0) rotate(14deg) scale(.6)}to{opacity:1;transform:none}}
+@keyframes photoReveal{from{opacity:0;transform:scale(1.06);filter:saturate(.6) brightness(.7)}to{opacity:1;transform:scale(1);filter:none}}
+@keyframes heroBreath{from{transform:scale(1.015)}to{transform:scale(1.05)}}
+@keyframes finaleBreath{from{transform:scale(1.01)}to{transform:scale(1.06)}}
+
+.cover-scene,.mail-scene{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:28px;transition:opacity .72s,transform .85s cubic-bezier(.2,.75,.2,1),visibility .72s}
+.cover-scene{z-index:2}
+.cover-scene.hide{opacity:0;visibility:hidden;transform:translateY(-34px) scale(.97)}
+.cover-inner{width:min(88vw,400px)}
+.cover-kicker{font:400 10px/1 "Cormorant Garamond",serif;letter-spacing:.44em;text-transform:uppercase;color:rgba(226,194,136,.75);margin-bottom:34px;animation:alphaRise .9s .1s both}
+/* 轨道圆环：双环反向旋转，中心是新人花体缩写 */
+.cover-orbit{position:relative;width:min(64vw,250px);aspect-ratio:1;margin:0 auto 30px;display:grid;place-items:center}
+.cover-orbit i{position:absolute;inset:0;border-radius:50%}
+.cover-orbit i.r1{border:1px dashed rgba(226,194,136,.5);animation:orbitSpin 26s linear infinite}
+.cover-orbit i.r2{inset:9%;border:1px solid rgba(231,166,184,.35);animation:orbitSpinRev 19s linear infinite}
+.cover-orbit i.r2::before{content:"";position:absolute;top:-4px;left:50%;width:7px;height:7px;border-radius:50%;background:var(--rose);box-shadow:0 0 12px rgba(231,166,184,.9)}
+.cover-mono{font-family:"Parisienne",cursive;font-size:52px;color:var(--gold-soft);text-shadow:0 0 26px rgba(226,194,136,.4);line-height:1}
+.cover-mono em{font-style:normal;color:var(--rose);font-size:.62em;vertical-align:middle;margin:0 6px}
+.cover-title{display:grid;gap:12px;animation:alphaRise 1s .25s both}
+.cover-line{font-size:16px;font-weight:300;letter-spacing:.3em;color:rgba(248,242,231,.86)}
+.cover-couple{font-family:"Parisienne",cursive;font-size:clamp(38px,9vw,54px);color:var(--gold-soft);letter-spacing:.02em;margin:2px 0}
+.cover-date{font:400 11px/1 "Cormorant Garamond",serif;letter-spacing:.4em;color:rgba(231,166,184,.9)}
+.receive-btn{margin-top:42px;padding:15px 46px;border:1px solid rgba(226,194,136,.55);border-radius:999px;font-size:13px;letter-spacing:.4em;text-indent:.4em;color:var(--gold-soft);background:linear-gradient(120deg,rgba(58,44,92,.5),rgba(36,27,63,.35));backdrop-filter:blur(6px);transition:.4s;animation:alphaRise 1s .55s both}
+.receive-btn:hover{border-color:var(--gold-soft);background:rgba(226,194,136,.14);box-shadow:0 8px 30px rgba(226,194,136,.18);letter-spacing:.48em}
+.mail-scene{opacity:0;visibility:hidden;transform:translateY(60px) scale(.92);z-index:3}
+.mail-scene.show{opacity:1;visibility:visible;transform:none}
+.mail-inner{width:min(92vw,420px)}
+.mail-title{font-family:"Parisienne",cursive;color:var(--gold-soft);font-size:clamp(30px,7vw,40px);animation:alphaRise .8s .1s both}
+.mail-sub{margin:10px 0 30px;font-size:13px;font-weight:300;letter-spacing:.3em;color:rgba(248,242,231,.7);animation:alphaRise .8s .25s both}
+
+/* 信封：夜蓝信纸 + 玫瑰火漆「囍」，clip-path 拼出三折盖 */
+.envelope{width:100%;aspect-ratio:1.55;position:relative;filter:drop-shadow(0 30px 26px rgba(0,0,0,.5));cursor:pointer;transform-style:preserve-3d;animation:envelopeArrive 1s cubic-bezier(.16,.8,.25,1) both}
+.envelope:not(.open){overflow:hidden;border-radius:6px}
+.env-back{position:absolute;inset:0;background:linear-gradient(150deg,#3b2f63,#241b3f);border:1px solid rgba(226,194,136,.35);border-radius:6px;box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.env-letter{position:absolute;left:8%;right:8%;bottom:7%;height:84%;background:linear-gradient(#fdf6e8,#eee0c8);color:var(--ink);z-index:2;border-radius:3px;display:flex;flex-direction:column;align-items:center;padding-top:16px;box-shadow:0 -3px 14px rgba(10,6,24,.4);transition:transform .8s cubic-bezier(.2,.75,.2,1) .35s}
+.env-letter small{font:500 9px "Cormorant Garamond",serif;letter-spacing:.32em;color:#977a56}
+.env-letter strong{font-size:19px;font-weight:500;letter-spacing:.14em;color:var(--rose-deep);margin-top:6px}
+.env-front{position:absolute;inset:0;z-index:3;overflow:hidden;border-radius:6px;pointer-events:none}
+.env-fold{position:absolute;inset:0}
+.env-left{z-index:1;clip-path:polygon(0 0,50.4% 58.2%,0 100%);background:linear-gradient(145deg,#4a3a7c 0,#33265a 100%)}
+.env-right{z-index:1;clip-path:polygon(100% 0,100% 100%,49.6% 58.2%);background:linear-gradient(215deg,#4c3b80 0,#312556 100%)}
+.env-bottom{z-index:2;clip-path:polygon(0 100%,49.4% 57.8%,50.6% 57.8%,100% 100%);background:linear-gradient(10deg,#54408c 0,#382a63 100%)}
+.env-flap{position:absolute;left:0;right:0;top:0;height:58%;z-index:4;clip-path:polygon(0 0,100% 0,50% 100%);background:linear-gradient(165deg,#5a469a 0,#43346f 55%,#33265a 100%);transform-origin:50% 0;transform-style:preserve-3d;will-change:transform;transition:transform .82s cubic-bezier(.5,.12,.3,1)}
+.env-flap::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#33265a 0,#4a3a7c 82%);opacity:0;transition:opacity 0s linear .49s}
+/* 火漆印章 */
+.seal{position:absolute;z-index:5;left:50%;top:56%;width:76px;height:76px;border:3px double #a04a63;border-radius:50%;display:grid;place-items:center;color:#a04a63;background:radial-gradient(circle at 40% 36%,#f6ddc9 0,#e8bfae 70%,#d8a695 100%);box-shadow:0 4px 14px rgba(10,6,24,.5);transform:translate(-50%,-50%);transition:.45s}
+.seal::before{content:"";position:absolute;inset:6px;border:1px dashed currentColor;border-radius:50%;opacity:.9}
+.seal strong{font-size:30px;font-weight:700;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.envelope.open .env-flap{transform:rotateX(180deg);z-index:1}
+.envelope.open .env-flap::after{opacity:1}
+.envelope.open .env-letter{transform:translateY(-49%)}
+.envelope.open .seal{opacity:0;transform:translate(-50%,-45%) scale(.7) rotate(-8deg)}
+.mail-hint{margin-top:26px;font-size:11px;letter-spacing:.34em;color:rgba(244,227,189,.6);animation:hint 2.2s ease-in-out infinite}
+
+/* ================= 五幕画廊 ================= */
+.gallery{position:fixed;inset:0;z-index:20;opacity:0;visibility:hidden;background:radial-gradient(circle at 50% 42%,#241b3f,#0d0a1c 74%);transition:opacity .9s,visibility .9s;perspective:1600px}
+.gallery.show{opacity:1;visibility:visible}
+.poster-deck{position:absolute;inset:0;transform-style:preserve-3d}
+/* 通用海报：进出幕用位移+缩放制造纵深感 */
+.poster{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden;transform:translateY(10%) scale(.96);transition:opacity .85s ease,transform .95s cubic-bezier(.2,.75,.2,1),visibility 0s linear .9s;will-change:transform,opacity}
+.poster.active{opacity:1;visibility:visible;transform:none;transition:opacity .85s ease,transform .95s cubic-bezier(.2,.75,.2,1),visibility 0s}
+.poster.before{transform:translateY(-9%) scale(.94)}
+.poster-no{position:absolute;top:max(20px,env(safe-area-inset-top));left:26px;z-index:5;font:500 10px "Cormorant Garamond",serif;letter-spacing:.36em;color:rgba(244,227,189,.66)}
+
+/* 幕一 · 开场：照片上下两层（模糊延伸底 + 清晰主图） */
+.poster-hero{background:#171128;color:#fff}
+.hero-blur{position:absolute;inset:-9%;width:118%;height:118%;object-fit:cover;filter:blur(26px) saturate(.65) brightness(.42);transform:scale(1.08)}
+.hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 52%;filter:saturate(.85) contrast(1.04) brightness(.74)}
+.hero-wash{position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,16,36,.42),rgba(19,16,36,.06) 34%,rgba(13,10,28,.24) 62%,rgba(13,10,28,.9) 100%),radial-gradient(circle at 50% 44%,transparent 34%,rgba(13,10,28,.42))}
+.hero-copy{position:absolute;left:0;right:0;bottom:9%;text-align:center;display:grid;gap:13px;justify-items:center}
+.hero-overline{font:400 10px "Cormorant Garamond",serif;letter-spacing:.5em;text-transform:uppercase;color:rgba(226,194,136,.85)}
+.hero-names{font-family:"Parisienne",cursive;font-size:clamp(44px,10vw,68px);color:#fff;text-shadow:0 2px 30px rgba(19,16,36,.8);line-height:1.1}
+.hero-names em{font-style:normal;color:var(--rose);font-size:.6em;vertical-align:middle;margin:0 10px}
+.hero-cn{font-size:14px;font-weight:300;letter-spacing:.6em;text-indent:.6em;color:rgba(248,242,231,.92)}
+.hero-date{font:400 12px "Cormorant Garamond",serif;letter-spacing:.42em;color:rgba(226,194,136,.9)}
+.hero-rule{width:52px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.poster.active .hero-overline{animation:alphaRise .8s .15s both}.poster.active .hero-names{animation:alphaRise .95s .28s both}.poster.active .hero-cn{animation:alphaRise .8s .46s both}.poster.active .hero-date{animation:alphaRise .8s .58s both}.poster.active .hero-rule{animation:alphaRise .8s .68s both}
+.poster-hero.active .hero-bg{animation:heroBreath 11s ease-out both}
+.first-scroll-guide{position:absolute;z-index:6;left:50%;bottom:16px;transform:translateX(-50%);display:grid;justify-items:center;gap:6px;color:rgba(248,242,231,.62);font-size:9px;letter-spacing:.3em;pointer-events:none;transition:opacity .4s}
+.first-scroll-guide i{width:1px;height:30px;background:linear-gradient(rgba(244,227,189,.9),transparent);animation:guideDrop 1.8s ease-in-out infinite}
+@keyframes guideDrop{0%{transform:scaleY(0);transform-origin:top}55%{transform:scaleY(1);transform-origin:top}56%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* 幕二 · 我们的故事：夜紫纸面 + 金线时间轴 */
+.poster-story{background:radial-gradient(circle at 82% 4%,rgba(244,227,189,.14),transparent 30%),linear-gradient(170deg,#2b2148 0,#1d1634 52%,#141026 100%)}
+.story-layout{height:100%;display:grid;grid-template-rows:auto 1fr;gap:20px;padding:64px 34px 40px;max-width:640px;margin:0 auto}
+.story-head{text-align:center}
+.story-kicker{font:400 10px "Cormorant Garamond",serif;letter-spacing:.46em;text-transform:uppercase;color:rgba(226,194,136,.72)}
+.story-title{font-family:"Parisienne",cursive;font-size:clamp(30px,6.4vw,42px);color:var(--gold-soft);margin-top:8px}
+.timeline{position:relative;display:grid;align-content:center;gap:26px;padding-left:30px}
+.timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:1px;background:linear-gradient(rgba(226,194,136,.05),rgba(226,194,136,.55),rgba(231,166,184,.4),rgba(226,194,136,.05))}
+.milestone{position:relative}
+.milestone::before{content:"";position:absolute;left:-28px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--rose);box-shadow:0 0 0 4px rgba(231,166,184,.14),0 0 14px rgba(231,166,184,.6)}
+.milestone b{display:block;font:500 11px "Cormorant Garamond",serif;letter-spacing:.3em;color:rgba(226,194,136,.9)}
+.milestone h3{font-size:19px;font-weight:500;letter-spacing:.14em;color:var(--cream);margin:6px 0 5px}
+.milestone p{font-size:12.5px;font-weight:300;line-height:1.85;color:rgba(248,242,231,.62);letter-spacing:.05em}
+.poster.active .milestone:nth-child(1){animation:alphaRise .8s .2s both}.poster.active .milestone:nth-child(2){animation:alphaRise .8s .38s both}.poster.active .milestone:nth-child(3){animation:alphaRise .8s .56s both}
+
+/* 幕三 · 幸而有你：大图相框 + 引言 */
+.poster-moment{background:#161029;color:#fff}
+.moment-wrap{height:100%;display:grid;place-items:center;padding:58px 30px 44px}
+.moment-frame{width:min(78vw,330px);position:relative;padding:13px;background:linear-gradient(#fdf6e8,#ecdcc0);border-radius:4px;box-shadow:0 26px 60px rgba(0,0,0,.55),0 4px 12px rgba(0,0,0,.35);transform:rotate(-1.6deg)}
+.moment-frame img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;filter:saturate(.92)}
+.moment-frame figcaption{padding:13px 4px 4px;text-align:center;font:italic 400 13px "Cormorant Garamond",serif;letter-spacing:.14em;color:#7c5f45}
+.moment-copy{text-align:center;margin-top:26px}
+.moment-kicker{font:400 10px "Cormorant Garamond",serif;letter-spacing:.46em;text-transform:uppercase;color:rgba(226,194,136,.75)}
+.moment-title{font-size:clamp(22px,5vw,30px);font-weight:400;letter-spacing:.34em;text-indent:.34em;color:var(--cream);margin-top:9px}
+.moment-quote{margin-top:11px;font-size:12.5px;font-weight:300;line-height:2;color:rgba(248,242,231,.6);letter-spacing:.08em}
+.poster.active .moment-frame{animation:photoReveal 1.15s .18s both}
+.poster.active .moment-kicker{animation:alphaRise .8s .55s both}.poster.active .moment-title{animation:alphaRise .8s .66s both}.poster.active .moment-quote{animation:alphaRise .8s .78s both}
+
+/* 幕四 · 倒计时与地点 */
+.poster-date{background:radial-gradient(circle at 50% 36%,#412a6b 0,#2b1d4d 52%,#191130 100%)}
+.date-layout{height:100%;display:grid;align-content:center;justify-items:center;gap:26px;padding:58px 30px 44px;text-align:center}
+.date-kicker{font:400 10px "Cormorant Garamond",serif;letter-spacing:.46em;text-transform:uppercase;color:rgba(226,194,136,.78)}
+.date-title{font-family:"Parisienne",cursive;font-size:clamp(30px,6.4vw,42px);color:var(--gold-soft)}
+.countdown{display:flex;gap:14px}
+.clock{width:clamp(64px,17vw,84px);padding:15px 6px 12px;border:1px solid rgba(226,194,136,.34);border-radius:8px;background:linear-gradient(180deg,rgba(244,227,189,.06),rgba(244,227,189,.015));display:grid;gap:5px}
+.clock b{font:300 clamp(24px,6.4vw,32px)/1 "Cormorant Garamond",serif;color:#fff;font-variant-numeric:tabular-nums}
+.clock span{font-size:9px;letter-spacing:.34em;text-indent:.34em;color:rgba(226,194,136,.75)}
+.venue{display:grid;gap:7px;font-size:13px;font-weight:300;letter-spacing:.16em;color:rgba(248,242,231,.85)}
+.venue small{font:400 10px "Cormorant Garamond",serif;letter-spacing:.3em;color:rgba(141,130,163,.9)}
+.venue a{color:var(--rose);text-decoration:none;border-bottom:1px dashed rgba(231,166,184,.4);padding-bottom:2px;transition:.3s}
+.venue a:hover{color:var(--gold-soft)}
+.poster.active .clock:nth-child(1){animation:alphaRise .62s .3s both}.poster.active .clock:nth-child(2){animation:alphaRise .62s .4s both}.poster.active .clock:nth-child(3){animation:alphaRise .62s .5s both}.poster.active .clock:nth-child(4){animation:alphaRise .62s .6s both}.poster.active .venue{animation:alphaRise .8s .75s both}
+
+/* 幕五 · 尾声 */
+.poster-finale{background:#181228;color:#fff}
+.finale-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:sepia(.1) saturate(.72) contrast(1.03) brightness(.5)}
+.finale-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,16,36,.62),rgba(19,16,36,.16) 40%,rgba(13,10,28,.85) 100%)}
+.finale-copy{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:14px;padding:0 30px}
+.finale-hand{font-family:"Parisienne",cursive;font-size:clamp(34px,7.6vw,50px);color:var(--gold-soft);text-shadow:0 0 30px rgba(226,194,136,.3)}
+.finale-text{font-size:13.5px;font-weight:300;line-height:2.1;letter-spacing:.1em;color:rgba(248,242,231,.88);max-width:340px}
+.finale-names{font:400 12px "Cormorant Garamond",serif;letter-spacing:.4em;color:rgba(231,166,184,.95)}
+.spread-btn{margin-top:14px;padding:13px 40px;border:1px solid rgba(226,194,136,.5);border-radius:999px;font-size:11px;letter-spacing:.4em;text-indent:.4em;color:var(--gold-soft);transition:.35s}
+.spread-btn:hover{background:rgba(226,194,136,.14);box-shadow:0 8px 26px rgba(226,194,136,.16)}
+.poster.active .finale-hand{animation:alphaRise .95s .15s both}.poster.active .finale-text{animation:alphaRise .8s .35s both}.poster.active .finale-names{animation:alphaRise .75s .52s both}.poster.active .spread-btn{animation:alphaRise .75s .66s both}
+.poster-finale.active .finale-bg{animation:finaleBreath 13s ease-out both}
+
+/* 右侧进度轨道 */
+.progress{position:fixed;z-index:40;right:24px;top:50%;transform:translateY(-50%);display:grid;justify-items:end;gap:16px;opacity:0;visibility:hidden;transition:.6s}
+.gallery.show .progress{opacity:1;visibility:visible}
+.progress::before{content:"";position:absolute;right:4px;top:12px;bottom:12px;width:1px;background:rgba(226,194,136,.18)}
+.progress-btn{display:grid;justify-items:end;gap:6px;padding:2px 0}
+.progress-btn span{font:500 8px "Cormorant Garamond",serif;letter-spacing:.24em;color:rgba(248,242,231,.5);opacity:0;transform:translateX(6px);transition:.35s}
+.progress-btn:hover span,.progress-btn.active span{opacity:1;transform:none}
+.progress-btn i{width:9px;height:9px;border-radius:50%;border:1px solid rgba(226,194,136,.55);background:transparent;transition:.35s;margin-right:0}
+.progress-btn.active i{background:var(--gold);border-color:rgba(255,240,204,.8);box-shadow:0 0 0 5px rgba(226,194,136,.12)}
+
+/* ================= 五幕铺开总览 ================= */
+.overview{position:fixed;inset:0;z-index:70;background:radial-gradient(circle at 50% 44%,#2c2050,#100c22 74%);display:grid;place-items:center;opacity:0;visibility:hidden;transition:opacity .6s,visibility 0s linear .6s;overflow:hidden;contain:layout paint}
+.overview.show{opacity:1;visibility:visible;transition:opacity .6s,visibility 0s}
+.overview-title{position:absolute;top:max(9vh,64px);left:0;right:0;text-align:center;font-family:"Parisienne",cursive;font-size:clamp(26px,5.6vw,36px);color:var(--gold-soft);animation:alphaRise .7s .1s both}
+.overview-deck{display:flex;gap:clamp(10px,2.4vw,22px);align-items:center;justify-content:center;padding:0 22px}
+.mini-poster{width:clamp(84px,15vw,128px);aspect-ratio:10/16;border-radius:10px;border:1px solid rgba(226,194,136,.28);display:grid;align-content:end;justify-items:center;gap:5px;padding:0 8px 15px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.45);opacity:0;transform:translate3d(0,20px,0) scale(.94);transition:transform .8s cubic-bezier(.18,.78,.2,1),opacity .5s}
+.overview.show .mini-poster{opacity:1;transform:none}
+.overview.show .m1{transition-delay:.05s}.overview.show .m2{transition-delay:.12s}.overview.show .m3{transition-delay:.19s}.overview.show .m4{transition-delay:.26s}.overview.show .m5{transition-delay:.33s}
+.mini-poster b{font:500 9px "Cormorant Garamond",serif;letter-spacing:.22em;color:rgba(248,242,231,.55)}
+.mini-poster span{font-size:12px;letter-spacing:.18em;color:var(--cream)}
+.mini-poster.m1{background:linear-gradient(170deg,#4a3a7c,#241b3f)}
+.mini-poster.m2{background:linear-gradient(170deg,#5c3a63,#2c1a3d)}
+.mini-poster.m3{background:linear-gradient(170deg,#7c4a63,#3a2044)}
+.mini-poster.m4{background:linear-gradient(170deg,#3a2c6b,#1c1436)}
+.mini-poster.m5{background:linear-gradient(170deg,#8a5a54,#402437)}
+.overview-actions{position:absolute;bottom:max(7vh,52px);left:0;right:0;display:flex;justify-content:center;gap:14px;animation:alphaRise .7s .4s both}
+.overview-actions button{padding:12px 34px;border:1px solid rgba(226,194,136,.45);border-radius:999px;font-size:11px;letter-spacing:.34em;text-indent:.34em;color:rgba(248,242,231,.88);transition:.35s}
+.overview-actions button:hover{border-color:var(--gold-soft);background:rgba(226,194,136,.12)}
+.overview-tip{position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:.14em;color:rgba(141,130,163,.7)}
+
+/* ================= 响应式 ================= */
+@media(max-width:760px){
+  .cover-scene,.mail-scene{padding:22px}
+  .cover-orbit{width:min(60vw,220px)}
+  .story-layout{padding:58px 26px 36px}
+  .timeline{gap:20px}
+  .milestone h3{font-size:17px}
+  .milestone p{font-size:12px}
+  .moment-wrap{grid-template-rows:auto auto;align-content:center}
+  .moment-frame{width:min(70vw,280px)}
+  .progress{right:14px;gap:14px}
+  .progress-btn span{display:none}
+  .overview-deck{flex-wrap:wrap;gap:12px;max-width:86vw}
+  .mini-poster{width:clamp(74px,20vw,104px)}
+}
+@media(max-height:660px){
+  .story-layout{grid-template-rows:auto 1fr;padding-top:52px}
+  .timeline{gap:14px}
+  .date-layout{gap:16px}
+  .clock{padding:11px 5px 9px}
+}
+/* 动效降级：尊重系统减弱动态设置 */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.poster{filter:none}.petal,.starfield{display:none}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<!-- 背景音乐：音源由 JS 注入（CDN），失败自动降级备用源 -->
+<audio id="bgm" loop preload="auto" playsinline webkit-playsinline></audio>
+<button id="musicBtn" class="music-btn muted" type="button" aria-label="播放背景音乐" title="Clair de Lune · 月光"><span class="disc"></span></button>
+
+<!-- 开场：封面 → 信封 -->
+<section class="intro" id="intro">
+  <div class="ambient"><div class="starfield" id="starfield"></div><div class="petal-field" id="petals"></div></div>
+  <div class="cover-scene" id="coverScene">
+    <div class="cover-inner">
+      <p class="cover-kicker">A Wedding Invitation For You</p>
+      <div class="cover-orbit"><i class="r1"></i><i class="r2"></i><span class="cover-mono">T<em>&amp;</em>Q</span></div>
+      <h1 class="cover-title">
+        <span class="cover-line">朋友你好 · 你收到一封来自</span>
+        <strong class="cover-couple">Wang Tao &amp; Wang Qing</strong>
+        <span class="cover-date">OCT . 07 . 2026 · 的婚礼邀请</span>
+      </h1>
+      <button class="receive-btn" id="receiveBtn" type="button">开启邀请</button>
+    </div>
+  </div>
+  <div class="mail-scene" id="mailScene">
+    <div class="mail-inner">
+      <h2 class="mail-title">You are invited</h2>
+      <p class="mail-sub">一封从星夜里寄来的信</p>
+      <div class="envelope" id="envelope" role="button" tabindex="0" aria-label="点击印章打开信封">
+        <div class="env-back"></div>
+        <div class="env-letter"><small>WITH LOVE &amp; LIGHT</small><strong>汪政 &amp; 李璟 敬上</strong></div>
+        <div class="env-front"><div class="env-fold"><span class="env-left env-fold"></span><span class="env-right env-fold"></span><span class="env-bottom env-fold"></span></div></div>
+        <div class="env-flap"></div>
+        <div class="seal"><strong>囍</strong></div>
+      </div>
+      <p class="mail-hint">点击火漆印章 · 拆开请柬</p>
+    </div>
+  </div>
+</section>
+
+<!-- 五幕海报画廊 -->
+<section class="gallery" id="gallery" aria-label="五幕婚礼海报">
+  <div class="poster-deck">
+    <!-- 幕一 · 开场 -->
+    <article class="poster poster-hero active" data-index="0">
+      <span class="poster-no">01 · OPENING</span>
+      <img class="hero-blur" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Romantic%20wedding%20couple%20silhouette%20embracing%20under%20a%20starry%20indigo%20night%20sky%2C%20glowing%20crescent%20moon%2C%20drifting%20rose%20petals%2C%20warm%20golden%20bokeh%2C%20cinematic%20dreamy%20fine%20art%20photography&image_size=landscape_16_9" alt="" aria-hidden="true">
+      <img class="hero-bg" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Romantic%20wedding%20couple%20silhouette%20embracing%20under%20a%20starry%20indigo%20night%20sky%2C%20glowing%20crescent%20moon%2C%20drifting%20rose%20petals%2C%20warm%20golden%20bokeh%2C%20cinematic%20dreamy%20fine%20art%20photography&image_size=landscape_16_9" alt="星夜下的新人剪影">
+      <div class="hero-wash"></div>
+      <div class="hero-copy">
+        <p class="hero-overline">Wedding Invitation</p>
+        <h2 class="hero-names">Wang Tao <em>&amp;</em> Wang Qing</h2>
+        <p class="hero-cn">汪政 · 李璟</p>
+        <i class="hero-rule"></i>
+        <p class="hero-date">OCTOBER 07 , 2026</p>
+      </div>
+      <div class="first-scroll-guide" id="scrollGuide"><span>向下滑动</span><i></i></div>
+    </article>
+
+    <!-- 幕二 · 我们的故事 -->
+    <article class="poster poster-story" data-index="1">
+      <span class="poster-no">02 · OUR STORY</span>
+      <div class="story-layout">
+        <div class="story-head">
+          <p class="story-kicker">Every Star Remembers</p>
+          <h2 class="story-title">我们的故事</h2>
+        </div>
+        <div class="timeline">
+          <div class="milestone"><b>2019 · SPRING</b><h3>初遇</h3><p>春天的图书馆，一杯拿铁放在了同一张长桌上。风翻动书页的那刻，故事开始落笔。</p></div>
+          <div class="milestone"><b>2022 · WINTER</b><h3>相恋</h3><p>平安夜的街灯下，一句小心翼翼的告白，让整个冬天都有了温度。</p></div>
+          <div class="milestone"><b>2025 · AUTUMN</b><h3>求婚</h3><p>星空下的单膝与戒指，她含泪点头——余生，请多指教。</p></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 幕三 · 幸而有你 -->
+    <article class="poster poster-moment" data-index="2">
+      <span class="poster-no">03 · WITH YOU</span>
+      <div class="moment-wrap">
+        <figure class="moment-frame">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Close-up%20of%20couple%20hands%20wearing%20engagement%20rings%20over%20candlelight%2C%20rose%20gold%20bokeh%2C%20soft%20dreamy%20romantic%20atmosphere%2C%20fine%20art%20wedding%20photography&image_size=portrait_4_3" alt="交换戒指的瞬间">
+          <figcaption>— The Moment —</figcaption>
+        </figure>
+        <div class="moment-copy">
+          <p class="moment-kicker">Grateful to Have You</p>
+          <h2 class="moment-title">幸而有你</h2>
+          <p class="moment-quote">山野万里，你是第四个春天的欢喜。<br>往后余生，请把这颗心，放心交给你。</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 幕四 · 倒计时与地点 -->
+    <article class="poster poster-date" data-index="3">
+      <span class="poster-no">04 · COUNTDOWN</span>
+      <div class="date-layout">
+        <p class="date-kicker">Counting Every Second</p>
+        <h2 class="date-title">期待与你相见</h2>
+        <div class="countdown">
+          <div class="clock"><b id="days">00</b><span>天 DAYS</span></div>
+          <div class="clock"><b id="hours">00</b><span>时 HRS</span></div>
+          <div class="clock"><b id="minutes">00</b><span>分 MIN</span></div>
+          <div class="clock"><b id="seconds">00</b><span>秒 SEC</span></div>
+        </div>
+        <div class="venue">
+          <small>WEDDING CEREMONY · 18:08</small>
+          <span>2026 年 10 月 7 日 · 农历八月廿七</span>
+          <span>香格里拉大酒店 · 星空宴会厅</span>
+          <a href="https://ditu.amap.com/search?query=%E9%A6%99%E6%A0%BC%E9%87%8C%E6%8B%89%E5%A4%A7%E9%85%92%E5%BA%97" target="_blank" rel="noopener">地图导航 ↗</a>
+        </div>
+      </div>
+    </article>
+
+    <!-- 幕五 · 尾声 -->
+    <article class="poster poster-finale" data-index="4">
+      <span class="poster-no">05 · SEE YOU THERE</span>
+      <img class="finale-bg" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Elegant%20wedding%20reception%20table%20in%20a%20night%20garden%20with%20candles%20and%20string%20lights%20and%20roses%2C%20deep%20blue%20twilight%2C%20romantic%20luxurious%20dreamy%20atmosphere&image_size=landscape_16_9" alt="烛光晚宴布置">
+      <div class="finale-shade"></div>
+      <div class="finale-copy">
+        <h2 class="finale-hand">See You There</h2>
+        <p class="finale-text">诚邀您见证我们的婚礼，共饮一杯星光。<br>您的祝福，是我们最珍贵的礼物。</p>
+        <p class="finale-names">WANG TAO &amp; WANG QING</p>
+        <button class="spread-btn" id="spreadBtn" type="button">铺开五幕 · 回顾请柬</button>
+      </div>
+    </article>
+  </div>
+
+  <nav class="progress" aria-label="海报进度">
+    <button class="progress-btn active" type="button" data-go="0" aria-label="第一幕：开场"><span>OPENING · 01</span><i></i></button>
+    <button class="progress-btn" type="button" data-go="1" aria-label="第二幕：我们的故事"><span>OUR STORY · 02</span><i></i></button>
+    <button class="progress-btn" type="button" data-go="2" aria-label="第三幕：幸而有你"><span>WITH YOU · 03</span><i></i></button>
+    <button class="progress-btn" type="button" data-go="3" aria-label="第四幕：倒计时"><span>COUNTDOWN · 04</span><i></i></button>
+    <button class="progress-btn" type="button" data-go="4" aria-label="第五幕：尾声"><span>FINALE · 05</span><i></i></button>
+  </nav>
+</section>
+
+<!-- 五幕铺开总览 -->
+<section class="overview" id="overview" aria-label="五幕总览">
+  <h2 class="overview-title">Five Scenes of Love</h2>
+  <div class="overview-deck">
+    <div class="mini-poster m1"><b>01</b><span>开场</span></div>
+    <div class="mini-poster m2"><b>02</b><span>故事</span></div>
+    <div class="mini-poster m3"><b>03</b><span>有你</span></div>
+    <div class="mini-poster m4"><b>04</b><span>倒计时</span></div>
+    <div class="mini-poster m5"><b>05</b><span>尾声</span></div>
+  </div>
+  <div class="overview-actions">
+    <button id="replayBtn" type="button">重新翻阅</button>
+  </div>
+  <p class="overview-tip">点击任意卡片可继续翻阅 · ESC 关闭总览</p>
+</section>
+
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id)};
+  var intro=$('intro'),cover=$('coverScene'),mail=$('mailScene'),envelope=$('envelope'),
+      receiveBtn=$('receiveBtn'),musicBtn=$('musicBtn'),bgm=$('bgm'),
+      gallery=$('gallery'),overview=$('overview'),scrollGuide=$('scrollGuide');
+
+  /* ---------- 氛围粒子：星空 + 花瓣（随机错峰，避免机械感） ---------- */
+  var starfield=$('starfield');
+  for(var i=0;i<64;i++){var s=document.createElement('i');s.className='star';
+    var size=Math.random()*2+1;s.style.cssText='left:'+(Math.random()*100)+'%;top:'+(Math.random()*100)+'%;width:'+size+'px;height:'+size+'px;animation-delay:'+(-Math.random()*3.4)+'s;animation-duration:'+(2.6+Math.random()*3)+'s';
+    starfield.appendChild(s);}
+  var petals=$('petals');
+  for(i=0;i<18;i++){var p=document.createElement('i');p.className='petal';
+    p.style.left=(Math.random()*100)+'%';p.style.setProperty('--drift',(Math.random()*160-80)+'px');
+    p.style.animationDuration=(Math.random()*7+8)+'s';p.style.animationDelay=(-Math.random()*15)+'s';
+    p.style.transform='scale('+(Math.random()*.7+.5)+')';petals.appendChild(p);}
+
+  /* ---------- 音乐播放器：状态机（自动播放/超时/降级/微信/iOS 兼容） ---------- */
+  // 双音源：主源失效时自动切换备用源
+  var musicSources=['https://cdn.pixabay.com/audio/2025/09/27/audio_6813e09c43.mp3','https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'];
+  var musicSourceIndex=0,musicAttempt=0,musicTimer=0,musicStarted=false,musicWanted=false,musicManuallyPaused=false,musicFailed=false,controlsReady=false,lastTouch=0;
+  bgm.volume=1;bgm.src=musicSources[0];bgm.load();
+  function setMusicState(playing,loading,failed){
+    musicBtn.classList.toggle('playing',playing);musicBtn.classList.toggle('muted',!playing);
+    musicBtn.classList.toggle('loading',!!loading);musicBtn.classList.toggle('error',!!failed);
+    musicBtn.setAttribute('aria-label',playing?'关闭背景音乐':failed?'背景音乐加载失败，点击重试':loading?'背景音乐加载中':'播放背景音乐');
+  }
+  function clearTimer(){if(musicTimer){clearTimeout(musicTimer);musicTimer=0}}
+  function didPlay(id){ // 播放成功：锁定本次尝试的会话，防止旧 promise 覆盖状态
+    if(id!==musicAttempt)return;clearTimer();musicFailed=false;musicStarted=!bgm.paused;musicWanted=musicStarted;
+    setMusicState(musicStarted,false,false);if(controlsReady)musicBtn.classList.add('show');
+  }
+  function switchSource(){ // 切换到备用音源
+    if(musicSourceIndex+1>=musicSources.length)return false;
+    musicSourceIndex++;musicAttempt++;try{bgm.pause();bgm.src=musicSources[musicSourceIndex];bgm.load()}catch(e){}return true;
+  }
+  function didFail(id){ // 播放失败：超时或报错时降级
+    if(id!==musicAttempt)return;clearTimer();musicStarted=false;musicWanted=false;musicFailed=true;
+    setMusicState(false,false,true);
+  }
+  function playMusic(fromGesture){
+    if(musicManuallyPaused&&!fromGesture)return;
+    if(musicStarted&&!bgm.paused){musicWanted=true;setMusicState(true,false,false);return}
+    musicManuallyPaused=false;musicWanted=true;musicFailed=false;bgm.muted=false;bgm.volume=1;setMusicState(false,true,false);
+    var id=++musicAttempt;clearTimer();
+    try{bgm.play().then(function(){didPlay(id)},function(){didFail(id)})}catch(e){didFail(id)}
+    musicTimer=setTimeout(function(){if(id===musicAttempt&&!musicStarted)didFail(id)},8000); // 8s 加载超时
+  }
+  bgm.addEventListener('playing',function(){didPlay(musicAttempt)});
+  bgm.addEventListener('pause',function(){musicStarted=false;if(!musicFailed)setMusicState(false,false,false)});
+  bgm.addEventListener('error',function(){didFail(musicAttempt)});
+  function resumeMusic(){if(!document.hidden&&musicWanted&&!musicManuallyPaused&&bgm.paused)playMusic(false)} // 切回页面自动续播
+  document.addEventListener('WeixinJSBridgeReady',function(){playMusic(true)},{once:true}); // 微信内核就绪后再试自动播放
+  document.addEventListener('visibilitychange',resumeMusic);
+  window.addEventListener('pageshow',resumeMusic);
+  function toggleMusic(e){
+    if(e){e.preventDefault();e.stopPropagation()}
+    if(musicStarted&&!bgm.paused){musicManuallyPaused=true;musicWanted=false;bgm.pause()}
+    else{musicManuallyPaused=false;playMusic(true)}
+  }
+  // iOS 上 click 可能被 300ms 延迟吞掉，用 touchend 兜底并去重
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(isIOS)musicBtn.addEventListener('touchend',function(e){lastTouch=Date.now();toggleMusic(e)},{passive:false});
+  musicBtn.addEventListener('click',function(e){if(Date.now()-lastTouch<700){e.preventDefault();return}toggleMusic(e)});
+
+  /* ---------- 流程：封面 → 信封 → 画廊 ---------- */
+  receiveBtn.addEventListener('click',function(){
+    controlsReady=true;musicBtn.classList.add('show');playMusic(true); // 首次用户手势：启动自动播放
+    cover.classList.add('hide');mail.classList.add('show');
+  });
+  var launched=false;
+  function launch(){ // 开信封 → 过渡到画廊
+    playMusic(true);
+    if(launched)return;launched=true;
+    envelope.classList.add('open');
+    setTimeout(function(){gallery.classList.add('show');intro.classList.add('done');go(0,true)},1450);
+  }
+  envelope.addEventListener('click',launch);
+  envelope.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();launch()}});
+
+  /* ---------- 五幕导航：锁定式翻页（wheel/touch/key/进度点共用） ---------- */
+  var posters=[].slice.call(document.querySelectorAll('.poster')),
+      progressBtns=[].slice.call(document.querySelectorAll('.progress-btn')),
+      index=0,locked=false,touchStartY=0,lastWheel=0;
+  function go(next,instant){
+    if(next<0)return;
+    if(next>posters.length-1){showOverview();return}
+    if(locked&&!instant)return;
+    locked=true;index=next;
+    gallery.setAttribute('data-scene',String(index));
+    posters.forEach(function(card,i){card.classList.remove('active','before','after');card.classList.add(i===index?'active':i<index?'before':'after')});
+    progressBtns.forEach(function(btn,i){btn.classList.toggle('active',i===index);if(i===index)btn.setAttribute('aria-current','step');else btn.removeAttribute('aria-current')});
+    scrollGuide.style.opacity=index===0?'1':'0';
+    setTimeout(function(){locked=false},instant?60:900); // 动画期间锁防止连翻跳帧
+  }
+  progressBtns.forEach(function(btn){btn.addEventListener('click',function(){go(Number(btn.dataset.go))})});
+  window.addEventListener('wheel',function(e){
+    if(!gallery.classList.contains('show')||overview.classList.contains('show'))return;
+    e.preventDefault();var now=Date.now();if(now-lastWheel<850)return;lastWheel=now;
+    if(e.deltaY>8)go(index+1);else if(e.deltaY<-8)go(index-1);
+  },{passive:false});
+  window.addEventListener('touchstart',function(e){touchStartY=e.changedTouches[0].clientY},{passive:true});
+  window.addEventListener('touchend',function(e){
+    if(!gallery.classList.contains('show')||overview.classList.contains('show'))return;
+    var dy=e.changedTouches[0].clientY-touchStartY;if(Math.abs(dy)<42)return;
+    dy<0?go(index+1):go(index-1);
+  },{passive:true});
+  window.addEventListener('keydown',function(e){
+    if(!gallery.classList.contains('show'))return;
+    if(overview.classList.contains('show')){if(e.key==='Escape')hideOverview();return}
+    if(['ArrowDown','ArrowRight','PageDown',' '].indexOf(e.key)>-1){e.preventDefault();go(index+1)}
+    else if(['ArrowUp','ArrowLeft','PageUp'].indexOf(e.key)>-1){e.preventDefault();go(index-1)}
+  });
+
+  /* ---------- 五幕铺开总览 ---------- */
+  function showOverview(){if(overview.classList.contains('show'))return;requestAnimationFrame(function(){overview.classList.add('show')})}
+  function hideOverview(){overview.classList.remove('show')}
+  $('spreadBtn').addEventListener('click',showOverview);
+  $('replayBtn').addEventListener('click',function(){hideOverview();go(0,true)});
+  document.querySelectorAll('.mini-poster').forEach(function(card,i){card.addEventListener('click',function(){hideOverview();go(i,true)})});
+
+  /* ---------- 婚礼倒计时（目标：2026-10-07 18:08 北京时间） ---------- */
+  var wedding=new Date('2026-10-07T18:08:00+08:00').getTime();
+  function pad(n){return String(n).padStart(2,'0')}
+  function tick(){
+    var rest=Math.max(0,wedding-Date.now());
+    $('days').textContent=pad(Math.floor(rest/86400000));
+    $('hours').textContent=pad(Math.floor(rest%86400000/3600000));
+    $('minutes').textContent=pad(Math.floor(rest%3600000/60000));
+    $('seconds').textContent=pad(Math.floor(rest%60000/1000));
+  }
+  tick();setInterval(tick,1000);
+})();
+</script>
+</body>
+</html>
