@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>全息玫瑰金 · 我们的婚礼请柬</title>
+<style>
+  :root {
+    --bg-light: #fff5f7; --bg-rose: #f8c8d8; --primary-red: #d92121;
+    --deep-red: #8b0000; --accent-gold: #d4af37; --light-gold: #f9d976;
+    --glass-bg: rgba(255, 255, 255, 0.55); --glass-border: rgba(255, 255, 255, 0.8);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; 
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(160deg, #fff5f7 0%, #ffe4e1 40%, #f8c8d8 100%);
+    color: var(--deep-red); touch-action: none; overscroll-behavior: none;
+  }
+
+  /* 背景特效 */
+  .spotlight { position: fixed; top: -20%; width: 50%; height: 140%; background: linear-gradient(180deg, rgba(255, 223, 150, 0.25) 0%, transparent 80%); filter: blur(60px); transform-origin: top center; pointer-events: none; z-index: 0; }
+  .spotlight.left { left: 0%; animation: sweepLeft 12s ease-in-out infinite alternate; }
+  .spotlight.right { right: 0%; animation: sweepRight 14s ease-in-out infinite alternate; }
+  @keyframes sweepLeft { 0% { transform: rotate(-10deg); } 100% { transform: rotate(20deg); } }
+  @keyframes sweepRight { 0% { transform: rotate(10deg); } 100% { transform: rotate(-20deg); } }
+  .bokeh-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: hidden; }
+  .bokeh { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,215,0,0.3) 40%, transparent 70%); filter: blur(8px); animation: floatBokeh 20s infinite ease-in-out; }
+  @keyframes floatBokeh { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; } 50% { transform: translate(30px, -40px) scale(1.2); opacity: 0.9; } }
+  .petals-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
+  .petal { position: absolute; width: 16px; height: 16px; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #ffd1ff 100%); clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); box-shadow: 0 0 12px rgba(255, 154, 158, 0.6); animation: fall linear infinite; opacity: 0; }
+  @keyframes fall { 0% { transform: translateY(-10vh) rotate(0deg) scale(0.8); opacity: 0; } 10% { opacity: 0.9; } 90% { opacity: 0.9; } 100% { transform: translateY(110vh) rotate(720deg) scale(1.2); opacity: 0; } }
+
+  #app { width: 100%; position: relative; z-index: 10; touch-action: none; }
+  
+  /* 【修复2】允许单页内部滚动，解决最后一页看不全的问题 */
+  .page { 
+    width: 100%; display: flex; flex-direction: column; align-items: center; 
+    padding: 40px 20px 60px; /* 底部增加 padding 防止内容贴底 */
+    position: relative; 
+    overflow-y: auto; /* 关键：允许垂直滚动 */
+    -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
+    touch-action: pan-y; /* 关键：允许浏览器处理垂直滚动 */
+  }
+  .page::-webkit-scrollbar { display: none; } /* 隐藏滚动条 */
+  
+  /* 让内容区域自动撑开，并在垂直方向上尽量居中 */
+  .page-content {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; flex: 1; justify-content: center;
+  }
+
+  .title { font-size: 26px; font-weight: 900; letter-spacing: 6px; background: linear-gradient(180deg, var(--primary-red) 0%, var(--accent-gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; text-align: center; filter: drop-shadow(0 2px 4px rgba(139, 0, 0, 0.2)); }
+  .subtitle { font-size: 12px; color: var(--accent-gold); letter-spacing: 3px; margin-bottom: 30px; opacity: 0.8; text-align: center; font-family: monospace; font-weight: bold; }
+  
+  /* 【修复1】名字对齐系统：固定高度 + Flex居中，2字3字完美对齐 */
+  .names-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 40px; position: relative; }
+  .name-col { 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    min-height: 160px; /* 固定最小高度，确保容器等高 */
+    padding: 15px 20px; background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+    border: 1px solid var(--glass-border); border-radius: 12px; box-shadow: 0 8px 32px rgba(139, 0, 0, 0.1); 
+  }
+  .name-role { font-size: 11px; color: var(--accent-gold); letter-spacing: 3px; margin-bottom: 10px; font-weight: bold; }
+  .name-cn { 
+    font-size: 32px; font-weight: 900; color: var(--deep-red); 
+    writing-mode: vertical-rl; letter-spacing: 8px; 
+    /* 使用 flex 让文字在容器内绝对居中 */
+    display: flex; align-items: center; justify-content: center; flex: 1;
+    text-shadow: 0 2px 4px rgba(139, 0, 0, 0.2);
+    padding-top: 8px; /* 补偿 letter-spacing 导致的视觉偏移 */
+  }
+  .name-en { font-size: 10px; color: rgba(139, 0, 0, 0.5); letter-spacing: 2px; margin-top: 10px; font-family: monospace; }
+  .center-xi { font-size: 50px; font-weight: bold; color: var(--primary-red); text-shadow: 0 0 20px rgba(217, 33, 33, 0.4), 0 4px 8px rgba(139, 0, 0, 0.3); animation: pulse-glow 2.5s infinite alternate; position: relative; }
+  .center-xi::before { content: ""; position: absolute; top: 50%; left: 50%; width: 80px; height: 80px; transform: translate(-50%, -50%); border: 2px dashed rgba(212, 175, 55, 0.6); border-radius: 50%; animation: spin 15s linear infinite; }
+  @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+  @keyframes pulse-glow { 0% { text-shadow: 0 0 10px rgba(217, 33, 33, 0.3), 0 4px 8px rgba(139, 0, 0, 0.3); filter: brightness(1); } 100% { text-shadow: 0 0 25px rgba(255, 215, 0, 0.6), 0 4px 8px rgba(139, 0, 0, 0.3); filter: brightness(1.1); } }
+  .cover-date { font-size: 14px; color: var(--deep-red); letter-spacing: 3px; font-family: monospace; margin-top: 10px; border-top: 1px solid rgba(212, 175, 55, 0.5); padding-top: 15px; font-weight: bold; }
+  
+  .timeline { width: 100%; max-width: 350px; position: relative; padding-left: 30px; }
+  .timeline::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, var(--accent-gold), var(--primary-red), transparent); }
+  .node { margin-bottom: 35px; position: relative; }
+  .node::before { content: ""; position: absolute; left: -25px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid var(--primary-red); box-shadow: 0 0 10px rgba(217, 33, 33, 0.4); }
+  .node-date { font-size: 13px; color: var(--primary-red); font-family: monospace; margin-bottom: 6px; font-weight: bold;}
+  .node-text { font-size: 14px; line-height: 1.6; color: #553333; }
+  
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 360px; }
+  .photo-item { aspect-ratio: 1/1; background: #fff; position: relative; overflow: hidden; border-radius: 8px; padding: 4px; box-shadow: 0 8px 20px rgba(139, 0, 0, 0.15); transition: all 0.3s ease; }
+  .photo-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+  .photo-item::after { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.6) 50%, transparent 60%); animation: shimmer 4s infinite; pointer-events: none; }
+  @keyframes shimmer { 0% { transform: translateX(-100%) translateY(-100%); } 100% { transform: translateX(100%) translateY(100%); } }
+  
+  .gallery-track { display: flex; gap: 15px; width: 100%; overflow-x: auto; padding: 20px 0; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
+  .gallery-track::-webkit-scrollbar { display: none; }
+  .gallery-item { flex: 0 0 240px; height: 320px; background: #fff; border-radius: 12px; scroll-snap-align: center; position: relative; box-shadow: 0 15px 35px rgba(139, 0, 0, 0.2); overflow: hidden; padding: 6px; }
+  .gallery-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .gallery-item .tag { position: absolute; bottom: 20px; left: 20px; z-index: 2; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--deep-red); font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--glass-border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  
+  .invite-card { width: 100%; max-width: 350px; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 30px 25px; position: relative; box-shadow: 0 15px 40px rgba(139, 0, 0, 0.15); }
+  .info-row { display: flex; margin-bottom: 25px; align-items: flex-start; }
+  .info-icon { width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, var(--primary-red), #ff6b6b); border-radius: 50%; color: #fff; font-size: 16px; margin-right: 15px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(217, 33, 33, 0.3); }
+  .info-content { flex: 1; }
+  .info-label { font-size: 12px; color: var(--accent-gold); margin-bottom: 5px; letter-spacing: 2px; font-weight: bold; }
+  .info-value { font-size: 16px; font-weight: bold; color: var(--deep-red); line-height: 1.5; }
+  .map-placeholder { width: 100%; height: 130px; background: rgba(255,255,255,0.6); border: 1px dashed rgba(212, 175, 55, 0.5); border-radius: 8px; display: flex; justify-content: center; align-items: center; color: rgba(139, 0, 0, 0.5); font-size: 13px; margin-bottom: 25px; position: relative; overflow: hidden; }
+  .nav-btn { width: 100%; padding: 14px; background: linear-gradient(90deg, var(--primary-red), #ff4d4d); border: none; border-radius: 25px; color: #fff; font-size: 16px; font-weight: bold; letter-spacing: 4px; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 20px rgba(217, 33, 33, 0.4); }
+  .nav-btn:active { transform: scale(0.98); filter: brightness(1.1); }
+  
+  .scroll-hint { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; color: var(--primary-red); font-size: 12px; opacity: 0.6; animation: bounce 2s infinite; pointer-events: none;}
+  .scroll-hint .arrow { width: 15px; height: 15px; border-right: 2px solid var(--primary-red); border-bottom: 2px solid var(--primary-red); transform: rotate(45deg); margin-top: 5px; }
+  @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(8px); } }
+  
+  .pagination { position: fixed; right: 15px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 100; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(139, 0, 0, 0.2); transition: all 0.3s; cursor: pointer;}
+  .dot.active { background: var(--primary-red); box-shadow: 0 0 10px rgba(217, 33, 33, 0.6); transform: scale(1.8); }
+
+  /* 自动播放控制按钮 */
+  .auto-play-btn {
+    position: fixed; bottom: 30px; right: 20px; z-index: 100;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    display: flex; justify-content: center; align-items: center;
+    font-size: 18px; color: var(--deep-red);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.15);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .auto-play-btn:active { transform: scale(0.9); }
+
+  /* 底部地图弹窗 (与上一版相同) */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+  .modal-overlay.active { opacity: 1; visibility: visible; }
+  .map-modal { position: absolute; bottom: 0; left: 0; width: 100%; background: var(--glass-bg); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-top: 1px solid var(--glass-border); border-radius: 24px 24px 0 0; padding: 20px 20px 40px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+  .modal-overlay.active .map-modal { transform: translateY(0); }
+  .modal-title { text-align: center; font-size: 16px; font-weight: bold; color: var(--deep-red); margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(139, 0, 0, 0.1); }
+  .map-options { display: flex; flex-direction: column; gap: 12px; }
+  .map-option-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; background: #fff; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; font-size: 15px; font-weight: 600; color: var(--deep-red); cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(139, 0, 0, 0.05); }
+  .map-option-btn:active { transform: scale(0.98); background: #fff5f7; }
+  .map-option-btn.recommend { background: linear-gradient(90deg, var(--primary-red), #ff4d4d); color: #fff; border: none; box-shadow: 0 8px 20px rgba(217, 33, 33, 0.3); }
+  .map-option-btn .icon { font-size: 20px; }
+  .cancel-btn { width: 100%; padding: 14px; background: transparent; border: none; font-size: 15px; color: #888; margin-top: 15px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="spotlight left"></div>
+<div class="spotlight right"></div>
+<div class="bokeh-container" id="bokeh"></div>
+<div class="petals-container" id="petals"></div>
+
+<div class="pagination">
+  <div class="dot active" data-index="0"></div>
+  <div class="dot" data-index="1"></div>
+  <div class="dot" data-index="2"></div>
+  <div class="dot" data-index="3"></div>
+  <div class="dot" data-index="4"></div>
+</div>
+
+<!-- 【新增】自动播放控制按钮 -->
+<div class="auto-play-btn" id="autoPlayBtn" title="自动播放/暂停">⏸</div>
+
+<div id="app">
+  <!-- Page 1 -->
+  <section class="page" id="page1">
+    <div class="page-content">
+      <div class="names-container">
+        <div class="name-col">
+          <span class="name-role">GROOM / 新郎</span>
+          <!-- 👇 替换新郎名字 (3个字) 👇 -->
+          <span class="name-cn">孙卫豪</span>
+          <span class="name-en">SUN</span>
+        </div>
+        <div class="center-xi">囍</div>
+        <div class="name-col">
+          <span class="name-role">BRIDE / 新娘</span>
+          <!-- 👇 替换新娘名字 (2个字，现在会自动居中对齐) 👇 -->
+          <span class="name-cn">吴娇</span>
+          <span class="name-en">WU</span>
+        </div>
+      </div>
+      <div class="title">我们结婚啦</div>
+      <div class="cover-date">2026.10.03 | WEDDING DAY</div>
+    </div>
+    <div class="scroll-hint"><span>向上滑动 开启喜悦</span><div class="arrow"></div></div>
+  </section>
+
+  <!-- Page 2 -->
+  <section class="page" id="page2">
+    <div class="page-content">
+      <div class="title">时光长卷</div>
+      <div class="subtitle">OUR LOVE STORY</div>
+      <div class="timeline">
+        <div class="node"><div class="node-date">2019.09 初见·惊鸿</div><div class="node-text">人海中的第一次相遇，像是命运写好的底层代码，一眼万年。</div></div>
+        <div class="node"><div class="node-date">2021.05 相恋·同频</div><div class="node-text">确认过眼神，是频率完全契合的人。从此，我的喜怒哀乐都有了回音。</div></div>
+        <div class="node"><div class="node-date">2023.10 求婚·锁定</div><div class="node-text">一枚戒指，一句誓言。在亲友的见证下，我们锁定了彼此的未来。</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 3 -->
+  <section class="page" id="page3">
+    <div class="page-content">
+      <div class="title">鎏金岁月</div>
+      <div class="subtitle">SWEET MOMENTS</div>
+      <div class="photo-grid">
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=21" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=22" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=23" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=24" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=25" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=26" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=27" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=28" alt=""></div>
+        <div class="photo-item"><img src="https://picsum.photos/200/200?random=29" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 4 -->
+  <section class="page" id="page4">
+    <div class="page-content">
+      <div class="title">光影长情</div>
+      <div class="subtitle">SWIPE LEFT FOR MORE</div>
+      <div class="gallery-track">
+        <div class="gallery-item"><img src="https://picsum.photos/300/400?random=30" alt=""><div class="tag">定格 · 婚纱照</div></div>
+        <div class="gallery-item"><img src="https://picsum.photos/300/400?random=31" alt=""><div class="tag">足迹 · 看世界</div></div>
+        <div class="gallery-item"><img src="https://picsum.photos/300/400?random=32" alt=""><div class="tag">日常 · 烟火气</div></div>
+        <div class="gallery-item"><img src="https://picsum.photos/300/400?random=33" alt=""><div class="tag">承诺 · 戴戒指</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 5 (内容较多，现在支持内部滚动了) -->
+  <section class="page" id="page5">
+    <div class="page-content">
+      <div class="title">喜宴坐标</div>
+      <div class="subtitle">INVITATION</div>
+      <div class="invite-card">
+        <div class="info-row"><div class="info-icon">📅</div><div class="info-content"><div class="info-label">吉时 / TIME</div><div class="info-value">2024年10月1日 (周二)<br>农历 八月廿七 18:08</div></div></div>
+        <div class="info-row"><div class="info-icon">📍</div><div class="info-content"><div class="info-label">福地 / LOCATION</div><div class="info-value">杭州市西湖区 · 瑰丽酒店<br>三层 玫瑰宴会厅</div></div></div>
+        <div class="map-placeholder">[ 请替换为真实地图截图 ]</div>
+        <button class="nav-btn" id="openMapModal">🧭 一键导航赴宴</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 底部地图弹窗 -->
+<div class="modal-overlay" id="mapModal">
+  <div class="map-modal">
+    <div class="modal-title">请选择导航地图</div>
+    <div class="map-options">
+      <button class="map-option-btn recommend" id="btnTencent"><span class="icon">💬</span> 微信/腾讯地图 (推荐)</button>
+      <button class="map-option-btn" id="btnAmap"><span class="icon">🗺️</span> 高德地图</button>
+      <button class="map-option-btn" id="btnBaidu"><span class="icon">🐾</span> 百度地图</button>
+      <button class="map-option-btn" id="btnApple"><span class="icon">🍎</span> 苹果地图 (iOS)</button>
+    </div>
+    <button class="cancel-btn" id="closeMapModal">取消</button>
+  </div>
+</div>
+
+<script>
+  // 1. 背景特效 (略)
+  const bokehContainer = document.getElementById('bokeh');
+  for (let i = 0; i < 15; i++) { const b = document.createElement('div'); b.className = 'bokeh'; b.style.left = Math.random() * 100 + '%'; b.style.top = Math.random() * 100 + '%'; const size = Math.random() * 80 + 40; b.style.width = size + 'px'; b.style.height = size + 'px'; b.style.animationDuration = (Math.random() * 10 + 15) + 's'; b.style.animationDelay = (Math.random() * 5) + 's'; bokehContainer.appendChild(b); }
+  const petalsContainer = document.getElementById('petals');
+  for (let i = 0; i < 25; i++) { const p = document.createElement('div'); p.className = 'petal'; p.style.left = Math.random() * 100 + '%'; p.style.animationDuration = (Math.random() * 8 + 6) + 's'; p.style.animationDelay = (Math.random() * 10) + 's'; const scale = Math.random() * 0.8 + 0.6; p.style.transform = `scale(${scale})`; petalsContainer.appendChild(p); }
+
+  // 2. 核心滑动引擎 (支持单页内滚动)
+  const app = document.getElementById('app');
+  const pages = document.querySelectorAll('.page');
+  const dots = document.querySelectorAll('.dot');
+  let currentIndex = 0, isAnimating = false, startY = 0, startScrollTop = 0, currentTranslateY = 0, isDragging = false;
+  
+  function getScreenHeight() { return window.innerHeight; }
+  function initLayout() {
+    const h = getScreenHeight();
+    app.style.height = (h * pages.length) + 'px';
+    pages.forEach(page => page.style.height = h + 'px');
+    app.style.transform = `translateY(${-currentIndex * h}px)`;
+  }
+  initLayout(); window.addEventListener('resize', initLayout);
+
+  function onStart(e) {
+    if (isAnimating) return;
+    isDragging = true;
+    startY = e.touches ? e.touches[0].clientY : e.clientY;
+    startScrollTop = pages[currentIndex].scrollTop; // 记录当前页的初始滚动位置
+    app.style.transition = 'none';
+    pauseAutoPlay(); // 用户一摸屏幕，立刻暂停自动播放
+  }
+
+  function onMove(e) {
+    if (!isDragging || isAnimating) return;
+    const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+    let diff = currentY - startY;
+
+    const currentPage = pages[currentIndex];
+    const isScrollable = currentPage.scrollHeight > currentPage.clientHeight;
+
+    // 【核心逻辑】：如果当前页有滚动条，且没有滚到边界，则让当前页自己滚动，不触发全屏翻页
+    if (isScrollable) {
+      // 向下拉 (diff > 0)，且不在顶部
+      if (diff > 0 && startScrollTop > 0) return; 
+      // 向上拉 (diff < 0)，且不在底部 (减1防止精度误差)
+      if (diff < 0 && startScrollTop < currentPage.scrollHeight - currentPage.clientHeight - 1) return; 
+    }
+
+    // 如果不需要内部滚动，或者已经到了边界，则触发全屏翻页
+    e.preventDefault(); 
+
+    if ((currentIndex === 0 && diff > 0) || (currentIndex === pages.length - 1 && diff < 0)) diff = diff * 0.3;
+    currentTranslateY = -currentIndex * getScreenHeight() + diff;
+    app.style.transform = `translateY(${currentTranslateY}px)`;
+  }
+
+  function onEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const diff = endY - startY; const threshold = getScreenHeight() * 0.15;
+    app.style.transition = 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+    let nextPage = currentIndex;
+    if (diff < -threshold && currentIndex < pages.length - 1) nextPage = currentIndex + 1;
+    else if (diff > threshold && currentIndex > 0) nextPage = currentIndex - 1;
+    currentIndex = nextPage; currentTranslateY = -currentIndex * getScreenHeight();
+    app.style.transform = `translateY(${currentTranslateY}px)`;
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
+    isAnimating = true; setTimeout(() => { isAnimating = false; }, 500);
+  }
+
+  app.addEventListener('touchstart', onStart, { passive: true });
+  app.addEventListener('touchmove', onMove, { passive: false }); // 需要 preventDefault
+  app.addEventListener('touchend', onEnd, { passive: true });
+  app.addEventListener('mousedown', onStart); app.addEventListener('mousemove', onMove);
+  app.addEventListener('mouseup', onEnd); app.addEventListener('mouseleave', onEnd);
+  
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      if (isAnimating) return; isAnimating = true; pauseAutoPlay();
+      currentIndex = parseInt(dot.dataset.index);
+      app.style.transition = 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+      app.style.transform = `translateY(${-currentIndex * getScreenHeight()}px)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === currentIndex));
+      setTimeout(() => { isAnimating = false; }, 500);
+    });
+  });
+
+  // 3. 自动播放系统
+  let autoPlayTimer = null;
+  let isAutoPlaying = true;
+  const AUTO_PLAY_INTERVAL = 4000; // 4秒翻一页
+  const autoPlayBtn = document.getElementById('autoPlayBtn');
+
+  function startAutoPlay() {
+    isAutoPlaying = true;
+    autoPlayBtn.innerHTML = '⏸';
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = setInterval(() => {
+      if (currentIndex < pages.length - 1) {
+        currentIndex++;
+        app.style.transition = 'transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1)';
+        app.style.transform = `translateY(${-currentIndex * getScreenHeight()}px)`;
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
+      } else {
+        pauseAutoPlay(); // 到最后一页自动停止
+      }
+    }, AUTO_PLAY_INTERVAL);
+  }
+
+  function pauseAutoPlay() {
+    isAutoPlaying = false;
+    autoPlayBtn.innerHTML = '▶';
+    clearInterval(autoPlayTimer);
+  }
+
+  autoPlayBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isAutoPlaying) pauseAutoPlay(); else startAutoPlay();
+  });
+
+  // 页面加载后默认开启自动播放
+  startAutoPlay();
+
+  // 4. 地图弹窗逻辑 (略，与上一版相同)
+  const HOTEL_NAME = "杭州瑰丽酒店"; const LAT = "27.721203"; const LNG = "111.247284";
+  const mapModal = document.getElementById('mapModal');
+  document.getElementById('openMapModal').addEventListener('click', () => { mapModal.classList.add('active'); pauseAutoPlay(); });
+  document.getElementById('closeMapModal').addEventListener('click', () => mapModal.classList.remove('active'));
+  mapModal.addEventListener('click', (e) => { if (e.target === mapModal) mapModal.classList.remove('active'); });
+  document.getElementById('btnTencent').addEventListener('click', () => { window.location.href = `https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${HOTEL_NAME}&tocoord=${LAT},${LNG}&referer=Wedding`; });
+  document.getElementById('btnAmap').addEventListener('click', () => { window.location.href = `https://uri.amap.com/navigation?to=${LNG},${LAT},${HOTEL_NAME}&mode=car&coordinate=gaode&callnative=1`; });
+  document.getElementById('btnBaidu').addEventListener('click', () => { window.location.href = `https://api.map.baidu.com/direction?destination=latlng:${LAT},${LNG}|name:${HOTEL_NAME}&mode=driving&output=html`; });
+  document.getElementById('btnApple').addEventListener('click', () => { window.location.href = `http://maps.apple.com/?ll=${LAT},${LNG}&q=${HOTEL_NAME}`; });
+</script>
+</body>
+</html>
