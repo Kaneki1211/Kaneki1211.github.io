@@ -34,12 +34,26 @@ const routes = JSON.parse(fs.readFileSync(path.join(dist, 'route-manifest.json')
 const OWNED_DIRS = ['assets', 'posts', 'archives', 'categories', 'tags', 'games']
 const OWNED_FILES = ['index.html', '404.html', '.nojekyll', 'favicon.svg']
 
-for (const dir of OWNED_DIRS) {
-  const target = path.join(root, dir)
-  if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
-    fs.rmSync(target, { recursive: true, force: true })
+/**
+ * 有些环境把 fs.rmSync 重定向到回收站（安全删除 shim），带 %/中文的目录会失败。
+ * 失败时退回逐文件 unlink + rmdir，保证构建不被卡住。
+ */
+function removeDir(dir) {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return
+  try {
+    fs.rmSync(dir, { recursive: true, force: true })
+    return
+  } catch {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const child = path.join(dir, entry.name)
+      if (entry.isDirectory()) removeDir(child)
+      else fs.unlinkSync(child)
+    }
+    fs.rmdirSync(dir)
   }
 }
+
+for (const dir of OWNED_DIRS) removeDir(path.join(root, dir))
 
 fs.cpSync(path.join(dist, 'assets'), path.join(root, 'assets'), { recursive: true })
 

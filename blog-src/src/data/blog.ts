@@ -525,12 +525,12 @@ export interface GameLink {
   emoji: string
 }
 
-/** 仓库根目录里已有的独立页面，博客导航统一入口 */
+/** 仓库根目录里已有的独立页面，博客导航统一入口。
+ *  href 必须带 .html：GitHub Pages 不做无扩展名重写，/eat 会 404，只有 /eat.html 可访问。 */
 export const games: GameLink[] = [
   { name: '干饭盲盒', desc: '今天吃什么，交给运气决定', href: 'eat.html', tag: '工具', emoji: '🍚' },
   { name: '猛鬼宿舍 · 微恐塔防', desc: '守住宿舍，别让它们进来', href: 'tower-defense.html', tag: '游戏', emoji: '👻' },
-  { name: '末日生存', desc: '资源、选择与活下去', href: 'apocalypse.html', tag: '游戏', emoji: '🌒' },
   { name: '婚礼请柬', desc: '一份会动的婚礼邀请函', href: 'wedding.html', tag: '页面', emoji: '💌' },
-  { name: '婚礼请柬 · 其二', desc: '另一版视觉方案的请柬', href: 'wedding2.html', tag: '页面', emoji: '🎊' },
-  { name: '时间', desc: '一个安静的时间小页', href: 'time.html', tag: '工具', emoji: '⏳' },
+  { name: '末日生存', desc: '资源、选择与活下去', href: 'apocalypse.html', tag: '游戏', emoji: '🌒' },
+  { name: '搭梯子', desc: '终于到达这里了', href: 'ladder.html', tag: '游戏', emoji: '🚩' },
 ]

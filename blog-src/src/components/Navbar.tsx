@@ -3,14 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useDrawer, useTheme } from '../context/ui'
 import SearchModal from './SearchModal'
 import { cx } from '../lib/hooks'
-
-const NAV_LINKS = [
-  { label: '首页', path: '/' },
-  { label: '归档', path: '/archives' },
-  { label: '分类', path: '/categories' },
-  { label: '标签', path: '/tags' },
-  { label: '游戏', path: '/games' },
-]
+import { NAV_ITEMS } from '../lib/nav'
 
 export default function Navbar() {
   const { theme, toggle } = useTheme()
@@ -67,7 +60,7 @@ export default function Navbar() {
 
           {/* 桌面端导航 */}
           <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((link) => (
+            {NAV_ITEMS.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}

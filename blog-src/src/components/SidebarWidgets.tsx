@@ -5,9 +5,11 @@ import {
   archives,
   articles,
   categories,
+  games,
   siteStats,
   tags,
 } from '../data/blog'
+import { useDrawer } from '../context/ui'
 import { encodeSlug, usePersistentState } from '../lib/hooks'
 
 const AVATAR = `${import.meta.env.BASE_URL}images/kaneki.jpg`
@@ -127,6 +129,47 @@ export function LikeWidget() {
     </div>
   )
 }
+
+/**
+ * 移动端抽屉里的「游戏与工具」入口卡片。
+ * 点回本站的正规路由 /games（列表页），而不是直接跳 .html，避免把 SPA 导航打断。
+ */
+export function GamesAndTools() {
+  const { closeDrawer } = useDrawer()
+
+  return (
+    <Link to="/games" onClick={closeDrawer} className="clay-card is-interactive p-4 flex items-center gap-3 group">
+      <span className="w-10 h-10 rounded-xl bg-primary-100/80 dark:bg-primary-900/40 flex items-center justify-center shrink-0">
+        <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M6 11h4m-2-2v4m7-1h.01M18 10h.01M7 6h10a4 4 0 014 4v4a4 4 0 01-4 4c-1.2 0-2-.8-2.6-1.6l-.7-1a2 2 0 00-3.4 0l-.7 1C9 17.2 8.2 18 7 18a4 4 0 01-4-4v-4a4 4 0 014-4z"
+          />
+        </svg>
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold t1 text-sm group-hover:text-primary-500 transition-colors">游戏与工具</span>
+        <span className="block text-xs t4 mt-0.5 truncate">
+          {games.length} 个页面，进去看看
+        </span>
+      </span>
+
+      <svg
+        className="w-4 h-4 t4 shrink-0 group-hover:translate-x-0.5 group-hover:text-primary-500 transition-all"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
+  )
+}
+
 
 /* ------------------------------------------------------------------ 最新文章 */
 export function LatestArticles() {
