@@ -6,3 +6,5 @@
 .chrome-*
 
 .workbuddy/
+blog-src/node_modules/
+blog-src/dist/

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>标签：搜索框 - 我的博客</title>
+    <meta name="description" content="一个温暖而有趣的个人博客" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // 首屏渲染前定好主题，避免深浅色闪烁
+      ;(function () {
+        try {
+          var t = localStorage.getItem('blog-theme')
+          if (t !== 'dark' && t !== 'light') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {}
+      })()
+    </script>
+    <script type="module" crossorigin src="/assets/index-Dc0clebY.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-BDK0CLLZ.js">
+    <link rel="modulepreload" crossorigin href="/assets/router-KtB_XBhY.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-C8tM-YT0.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
