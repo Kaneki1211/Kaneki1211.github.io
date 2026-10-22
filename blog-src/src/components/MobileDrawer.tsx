@@ -57,52 +57,52 @@ const NAV_ICONS: Record<string, ReactNode> = {
 }
 
 /** 抽屉内的主导航：<md 断点下顶部那排导航是隐藏的，这里是移动端唯一入口 */
-function DrawerNav() {
-  const { closeDrawer } = useDrawer()
-  const { pathname } = useLocation()
+// function DrawerNav() {
+//   const { closeDrawer } = useDrawer()
+//   const { pathname } = useLocation()
 
-  return (
-    <nav className="clay-card p-2" aria-label="站点导航">
-      {NAV_ITEMS.map((item) => {
-        const active = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path)
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={closeDrawer}
-            aria-current={active ? 'page' : undefined}
-            className={cx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-              active
-                ? 'bg-primary-50 dark:bg-white/[0.06] text-primary-500'
-                : 't2 hover:text-primary-500 hover:bg-primary-50/60 dark:hover:bg-white/[0.04]',
-            )}
-          >
-            <svg
-              className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-primary-500' : 't4')}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              {NAV_ICONS[item.path]}
-            </svg>
-            {item.label}
-            <svg
-              className="w-4 h-4 ml-auto opacity-30"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        )
-      })}
-    </nav>
-  )
-}
+//   return (
+//     <nav className="clay-card p-2" aria-label="站点导航">
+//       {NAV_ITEMS.map((item) => {
+//         const active = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path)
+//         return (
+//           <Link
+//             key={item.path}
+//             to={item.path}
+//             onClick={closeDrawer}
+//             aria-current={active ? 'page' : undefined}
+//             className={cx(
+//               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+//               active
+//                 ? 'bg-primary-50 dark:bg-white/[0.06] text-primary-500'
+//                 : 't2 hover:text-primary-500 hover:bg-primary-50/60 dark:hover:bg-white/[0.04]',
+//             )}
+//           >
+//             <svg
+//               className={cx('w-[18px] h-[18px] shrink-0', active ? 'text-primary-500' : 't4')}
+//               fill="none"
+//               stroke="currentColor"
+//               viewBox="0 0 24 24"
+//               aria-hidden="true"
+//             >
+//               {NAV_ICONS[item.path]}
+//             </svg>
+//             {item.label}
+//             <svg
+//               className="w-4 h-4 ml-auto opacity-30"
+//               fill="none"
+//               stroke="currentColor"
+//               viewBox="0 0 24 24"
+//               aria-hidden="true"
+//             >
+//               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+//             </svg>
+//           </Link>
+//         )
+//       })}
+//     </nav>
+//   )
+// }
 
 export default function MobileDrawer() {
   const { open, closeDrawer } = useDrawer()
@@ -133,12 +133,11 @@ export default function MobileDrawer() {
           </button>
 
           <div className="pt-8 space-y-5">
-            <DrawerNav />
             <AuthorCard />
             <NavLinks />
-            <GamesAndTools />
             <Announcement />
             <LikeWidget />
+            <GamesAndTools />
             <LatestArticles />
             <CategoryList />
             <TagCloud />
