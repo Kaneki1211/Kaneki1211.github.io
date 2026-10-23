@@ -8,7 +8,7 @@ export default function CategoryDetailPage() {
   const categoryName = safeDecode(name)
   const category = getCategory(categoryName)
 
-  usePageTitle(`分类：${categoryName || '未知'} - 我的博客`)
+  usePageTitle(`分类：${categoryName || '未知'} - Kaneki Blog`)
 
   return (
     <div className="animate-fade-in">

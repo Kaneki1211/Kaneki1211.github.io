@@ -8,7 +8,7 @@ export default function TagDetailPage() {
   const tag = getTag(tagName)
   const matched = articlesByTag(tagName)
 
-  usePageTitle(`标签：${tagName || '未知'} - 我的博客`)
+  usePageTitle(`标签：${tagName || '未知'} - Kaneki Blog`)
 
   return (
     <div className="animate-fade-in">

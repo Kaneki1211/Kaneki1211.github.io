@@ -13,7 +13,7 @@ export default function PostPage() {
 
   const [currentUrl, setCurrentUrl] = useState('')
 
-  usePageTitle(article ? `${article.title} - 我的博客` : '文章不存在 - 我的博客')
+  usePageTitle(article ? `${article.title} - Kaneki Blog` : '文章不存在 - Kaneki Blog')
 
   useEffect(() => {
     setCurrentUrl(window.location.href)

@@ -11,7 +11,7 @@ export default function ArchiveDetailPage() {
   const { key = '' } = useParams()
   const result = getArchive(key)
 
-  usePageTitle(result ? `归档：${result.title} - 我的博客` : '归档不存在 - 我的博客')
+  usePageTitle(result ? `归档：${result.title} - Kaneki Blog` : '归档不存在 - Kaneki Blog')
 
   if (!result) {
     return (

@@ -30,7 +30,7 @@ export default function MobileDrawer() {
     <div className="fixed inset-0 z-[60] lg:hidden">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={closeDrawer} />
 
-      <div className="absolute left-0 top-0 bottom-0 w-[300px] max-w-[85vw] overflow-y-auto animate-drawer-in bg-warm-50 dark:bg-[#191410] shadow-2xl">
+      <div className="absolute left-0 top-0 bottom-0 w-[300px] max-w-[85vw] overflow-y-auto animate-drawer-in bg-warm-50 dark:bg-[#06080e] shadow-2xl">
         <div className="p-5 space-y-5 relative">
           <button
             type="button"

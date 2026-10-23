@@ -7,7 +7,7 @@ import { usePageTitle } from '../lib/hooks'
 const PER_PAGE = 6
 
 export default function HomePage() {
-  usePageTitle('我的博客 - 首页')
+  usePageTitle('Kaneki Blog - 首页')
 
   const [searchParams, setSearchParams] = useSearchParams()
   // 源项目是假分页（totalPages 写死 3、点击只滚回顶部），这里改成真正按 URL 分页
@@ -29,7 +29,7 @@ export default function HomePage() {
       {/* 顶部欢迎区 */}
       <section className="mb-10 animate-fade-in">
         <div className="clay-card p-8 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/70 via-warm-50/60 to-accent-50/70 dark:from-primary-900/20 dark:via-warm-900/20 dark:to-accent-900/20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/70 via-warm-50/60 to-accent-50/70 dark:from-sky-400/10 dark:via-indigo-400/[0.07] dark:to-primary-400/10" />
           <div className="relative z-10">
             <h1 className="text-3xl md:text-4xl font-bold t1 mb-3">
               欢迎来到{' '}

@@ -6,7 +6,7 @@ import { usePageTitle } from '../lib/hooks'
  * 用普通 <a> 打开，走整页加载，避免被 Router 拦截后 404。
  */
 export default function GamesPage() {
-  usePageTitle('游戏与工具 - 我的博客')
+  usePageTitle('游戏与工具 - Kaneki Blog')
 
   return (
     <div className="animate-fade-in">

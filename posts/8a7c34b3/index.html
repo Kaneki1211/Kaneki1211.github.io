@@ -3,9 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>没有更新，汇报一下今天干了啥吧 - 我的博客</title>
+    <title>没有更新，汇报一下今天干了啥吧 - Kaneki Blog</title>
     <meta name="description" content="一个温暖而有趣的个人博客" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- 位图优先：Chromium 的 favicon 管线不会渲染 SVG 里内嵌的 base64 位图，
+         只留 SVG 会出现「默认地球图标」。PNG/ICO 是各浏览器都认的兜底。 -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f17f12" />
     <script>
       // 首屏渲染前定好主题，避免深浅色闪烁
       ;(function () {
@@ -18,12 +24,12 @@
         } catch (e) {}
       })()
     </script>
-    <script type="module" crossorigin src="/assets/index-D1qLYb0F.js"></script>
+    <script type="module" crossorigin src="/assets/index-CLexAei5.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-BDK0CLLZ.js">
     <link rel="modulepreload" crossorigin href="/assets/router-KtB_XBhY.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-CqMBIvlc.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-HX7jNUaC.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

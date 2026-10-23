@@ -3,7 +3,7 @@ import { archives, siteStats } from '../data/blog'
 import { usePageTitle } from '../lib/hooks'
 
 export default function ArchivesPage() {
-  usePageTitle('归档 - 我的博客')
+  usePageTitle('归档 - Kaneki Blog')
 
   return (
     <div className="animate-fade-in">

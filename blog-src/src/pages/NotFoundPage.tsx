@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { usePageTitle } from '../lib/hooks'
 
 export default function NotFoundPage() {
-  usePageTitle('页面不存在 - 我的博客')
+  usePageTitle('页面不存在 - Kaneki Blog')
 
   return (
     <div className="animate-fade-in">

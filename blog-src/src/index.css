@@ -38,32 +38,42 @@
 }
 
 [data-theme='dark'] {
-  --bg: #14100c;
-  --glow-1: rgba(241, 127, 18, 0.16);
-  --glow-2: rgba(244, 63, 94, 0.12);
-  --glow-3: rgba(214, 135, 51, 0.1);
+  /* 深空配色：冷黑底 + 冷调星云，暖橙只保留在强调色（链接/按钮）上 */
+  --bg: #06080e;
+  --glow-1: rgba(96, 132, 214, 0.22);
+  --glow-2: rgba(70, 96, 190, 0.14);
+  --glow-3: rgba(126, 86, 176, 0.12);
 
-  --card: rgba(38, 30, 24, 0.8);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card: rgba(17, 20, 28, 0.72);
+  --card-border: rgba(255, 255, 255, 0.07);
   --surface-muted: rgba(255, 255, 255, 0.045);
-  --line: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.09);
 
-  --t1: #f4ede3;
-  --t2: #d3c8ba;
-  --t3: #a99d8f;
-  --t4: #7d7368;
+  --t1: #edf1f8;
+  --t2: #c2cbd9;
+  --t3: #96a0af;
+  --t4: #6c7684;
 
-  --nav: rgba(20, 16, 12, 0.86);
-  --code-bg: rgba(255, 255, 255, 0.07);
-  --pre-bg: #0c0a08;
-  --pre-fg: #ede6dc;
+  --nav: rgba(6, 8, 14, 0.82);
+  --code-bg: rgba(255, 255, 255, 0.06);
+  --pre-bg: #04060a;
+  --pre-fg: #e5ebf4;
 
-  --shadow: 14px 14px 36px rgba(0, 0, 0, 0.5), -14px -14px 36px rgba(255, 255, 255, 0.02);
-  --shadow-hover: 18px 18px 44px rgba(0, 0, 0, 0.6), -18px -18px 44px rgba(255, 255, 255, 0.03);
-  --shadow-sm: 8px 8px 18px rgba(0, 0, 0, 0.45), -8px -8px 18px rgba(255, 255, 255, 0.025);
-  --shadow-inset: inset 4px 4px 10px rgba(0, 0, 0, 0.45), inset -4px -4px 10px rgba(255, 255, 255, 0.03);
+  --shadow: 14px 14px 40px rgba(0, 0, 0, 0.62), -14px -14px 40px rgba(120, 160, 255, 0.018);
+  --shadow-hover: 18px 18px 48px rgba(0, 0, 0, 0.7), -18px -18px 48px rgba(120, 160, 255, 0.026);
+  --shadow-sm: 8px 8px 20px rgba(0, 0, 0, 0.55), -8px -8px 20px rgba(120, 160, 255, 0.02);
+  --shadow-inset: inset 4px 4px 10px rgba(0, 0, 0, 0.5), inset -4px -4px 10px rgba(255, 255, 255, 0.025);
 
   color-scheme: dark;
+}
+
+/* 暗色专属：顶部一片冷色星云光晕（对应参考图里那圈从顶部漫下来的光） */
+[data-theme='dark'] body::before {
+  background:
+    radial-gradient(130% 110% at 50% 8%, transparent 42%, rgba(0, 0, 0, 0.55) 100%),
+    radial-gradient(1100px 720px at 50% -10%, rgba(96, 132, 214, 0.24), transparent 68%),
+    radial-gradient(760px 520px at 10% 4%, rgba(70, 96, 190, 0.13), transparent 70%),
+    radial-gradient(820px 620px at 90% 98%, rgba(126, 86, 176, 0.11), transparent 72%);
 }
 
 @layer base {

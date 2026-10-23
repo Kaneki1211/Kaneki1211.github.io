@@ -93,7 +93,7 @@ for (const route of routes) {
 }
 
 // 未知路径：Pages 会返回 404 状态但内容是 SPA 壳，Router 渲染 404 页
-fs.writeFileSync(path.join(root, '404.html'), shell.replace(/<title>[\s\S]*?<\/title>/, '<title>页面不存在 - 我的博客</title>'))
+fs.writeFileSync(path.join(root, '404.html'), shell.replace(/<title>[\s\S]*?<\/title>/, '<title>页面不存在 - Kaneki Blog</title>'))
 
 // 关键：不关掉 Jekyll 的话，下划线开头的文件/目录会被直接忽略
 fs.writeFileSync(path.join(root, '.nojekyll'), '')

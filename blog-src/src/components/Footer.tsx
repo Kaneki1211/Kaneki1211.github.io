@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="clay-card p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm t3">
-              &copy; {year} 我的博客 · 保留所有权利
+              &copy; {year} Kaneki Blog · 保留所有权利
             </div>
 
             <div className="flex items-center gap-3 text-sm t4 flex-wrap justify-center">

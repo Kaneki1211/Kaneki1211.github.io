@@ -3,7 +3,7 @@ import { categories } from '../data/blog'
 import { encodeSlug, usePageTitle } from '../lib/hooks'
 
 export default function CategoriesPage() {
-  usePageTitle('分类 - 我的博客')
+  usePageTitle('分类 - Kaneki Blog')
 
   return (
     <div className="animate-fade-in">

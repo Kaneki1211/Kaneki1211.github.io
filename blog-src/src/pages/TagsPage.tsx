@@ -3,7 +3,7 @@ import { tags } from '../data/blog'
 import { encodeSlug, usePageTitle } from '../lib/hooks'
 
 export default function TagsPage() {
-  usePageTitle('标签 - 我的博客')
+  usePageTitle('标签 - Kaneki Blog')
 
   return (
     <div className="animate-fade-in">

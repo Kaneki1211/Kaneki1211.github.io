@@ -1,4 +1,3 @@
-import { Suspense, lazy } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './Navbar'
@@ -16,8 +15,8 @@ import {
   TagCloud,
 } from './SidebarWidgets'
 
-// three.js 体积大，单独切包 + 懒加载，首屏不阻塞
-const Scene3D = lazy(() => import('./Scene3D'))
+// 全屏背景：浅色 = 暖色粒子，深色 = 深空星场（都是 canvas 2D，无第三方依赖）
+import AmbientBackground from './AmbientBackground'
 
 export default function Layout() {
   const { pathname } = useLocation()
@@ -29,9 +28,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen relative">
-      <Suspense fallback={null}>
-        <Scene3D />
-      </Suspense>
+      <AmbientBackground />
 
       <Navbar />
 

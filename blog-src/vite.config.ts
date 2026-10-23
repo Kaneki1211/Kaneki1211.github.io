@@ -13,26 +13,26 @@ function routeManifest(): Plugin {
     apply: 'build',
     generateBundle() {
       const routes = [
-        { path: '/', title: '我的博客 - 首页' },
-        { path: '/archives', title: '归档 - 我的博客' },
-        { path: '/categories', title: '分类 - 我的博客' },
-        { path: '/tags', title: '标签 - 我的博客' },
-        { path: '/games', title: '游戏与工具 - 我的博客' },
-        ...articles.map((a) => ({ path: `/posts/${a.slug}`, title: `${a.title} - 我的博客` })),
+        { path: '/', title: 'Kaneki Blog - 首页' },
+        { path: '/archives', title: '归档 - Kaneki Blog' },
+        { path: '/categories', title: '分类 - Kaneki Blog' },
+        { path: '/tags', title: '标签 - Kaneki Blog' },
+        { path: '/games', title: '游戏与工具 - Kaneki Blog' },
+        ...articles.map((a) => ({ path: `/posts/${a.slug}`, title: `${a.title} - Kaneki Blog` })),
         ...archives.flatMap((y) => [
-          { path: `/archives/${y.year}`, title: `归档：${y.year}年 - 我的博客` },
+          { path: `/archives/${y.year}`, title: `归档：${y.year}年 - Kaneki Blog` },
           ...y.months.map((m) => ({
             path: `/archives/${m.key}`,
-            title: `归档：${y.year}年${m.month}月 - 我的博客`,
+            title: `归档：${y.year}年${m.month}月 - Kaneki Blog`,
           })),
         ]),
         ...categories.map((c) => ({
           path: `/categories/${encodeURIComponent(c.name)}`,
-          title: `分类：${c.name} - 我的博客`,
+          title: `分类：${c.name} - Kaneki Blog`,
         })),
         ...tags.map((t) => ({
           path: `/tags/${encodeURIComponent(t.name)}`,
-          title: `标签：${t.name} - 我的博客`,
+          title: `标签：${t.name} - Kaneki Blog`,
         })),
       ]
       this.emitFile({
