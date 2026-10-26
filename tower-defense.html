@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>猛鬼宿舍 - 微恐塔防</title>
 <style>
 /* ========== 全局样式 ========== */
@@ -26,150 +26,164 @@ canvas {
 <body>
 <canvas id="gameCanvas"></canvas>
 <script>
-// ========== 游戏配置 ==========
-const CONFIG = {
-  // 素材路径
-  ASSETS: {
-    UI: {
-      MENU_BG: 'assets/images/tower/home.jpg',
-      START_BTN: '微恐塔防素材/UI素材/首页/开始游戏按钮.png',
-      SIGN_IN: '微恐塔防素材/UI素材/首页/签到入口.png',
-      COIN_FRAME: '微恐塔防素材/UI素材/首页/货币持有框.png',
-      SELECT_BG: '微恐塔防素材/UI素材/首页/选角背景.png',
-      WIN_RESULT: '微恐塔防素材/UI素材/结算页/成功结算.png',
-      LOSE_RESULT: '微恐塔防素材/UI素材/结算页/失败结算.png',
-      CLAIM_BTN: '微恐塔防素材/UI素材/结算页/领取按钮.png',
-      TECH_SHOP: '微恐塔防素材/UI素材/弹窗/科技商店弹窗.png',
-      GAME_SHOP: '微恐塔防素材/UI素材/弹窗/局内商店弹窗.png',
-      BUILD_BTN: '微恐塔防素材/UI素材/弹窗/建造按钮.png',
-      BUY_BTN: '微恐塔防素材/UI素材/弹窗/可购买按钮.png',
-      NO_BUY_BTN: '微恐塔防素材/UI素材/弹窗/不可购买按钮.png',
-    },
-    ROOMS: [
-      '微恐塔防素材/房间地图/废弃医院.png',
-      '微恐塔防素材/房间地图/幽灵船.jpg',
-      '微恐塔防素材/房间地图/末日堡垒.jpg',
-    ],
-  },
+'use strict';
+// ============================================================
+// 猛鬼宿舍 - 微恐塔防（单人核心版）
+// 数值依据《猛鬼宿舍-微恐塔防》需求文档明细表：
+//   床10级 / 门13级 / 炮台12级 / 发电机10级 / 矿场(铜银金钻石) /
+//   修复台4台上限 / 特殊建筑每种限1 / 拆除返还累计投入25%
+// ============================================================
 
-  // 网格配置
+// ========== 游戏配置（明细表数值） ==========
+const CONFIG = {
   GRID_COLS: 7,
   GRID_ROWS: 5,
 
-  // 初始资源
   INIT_GOLD: 30,
   INIT_POWER: 0,
 
-  // Boss刷新间隔（秒）
-  BOSS_SPAWN_INTERVAL: 30,
-  // 准备时间（秒）
-  PREPARE_TIME: 30,
+  BOSS_SPAWN_INTERVAL: 30,   // Boss刷新间隔（秒）
+  FIRST_BOSS_TIME: 30,       // 首只Boss出现时间（秒）
 
-  // 床铺数据：[等级, 金币产出/秒, 升级费用]
+  REFUND_RATE: 0.25,         // 拆除返还比例（累计投入的25%）
+
+  // 床铺：income=金币/秒；gold/energy=升到该级费用；door=升级所需门等级
   BED_DATA: [
-    { level: 1, income: 1, cost: 0 },
-    { level: 2, income: 2, cost: 30 },
-    { level: 3, income: 4, cost: 100 },
-    { level: 4, income: 8, cost: 300 },
-    { level: 5, income: 16, cost: 800 },
-    { level: 6, income: 32, cost: 2000 },
-    { level: 7, income: 64, cost: 5000 },
+    { income: 1 },
+    { income: 2,   gold: 25,   door: 1 },
+    { income: 4,   gold: 50 },
+    { income: 8,   gold: 100,  door: 2 },
+    { income: 16,  gold: 200 },
+    { income: 32,  gold: 400,  door: 5 },
+    { income: 64,  gold: 800,  energy: 16 },
+    { income: 128, gold: 1600, energy: 32,  door: 8 },
+    { income: 256, gold: 3200, energy: 64,  door: 10 },
+    { income: 512, gold: 6400, energy: 128, door: 11 },
   ],
 
-  // 房门数据
+  // 房门：hp=血量；regen=每秒自愈；gold/energy=升到该级费用
   DOOR_DATA: [
-    { level: 1, hp: 100, cost: 0 },
-    { level: 2, hp: 200, cost: 50 },
-    { level: 3, hp: 350, cost: 120 },
-    { level: 4, hp: 500, cost: 250 },
-    { level: 5, hp: 700, cost: 500 },
-    { level: 6, hp: 900, cost: 800 },
-    { level: 7, hp: 1200, cost: 1500 },
-    { level: 8, hp: 1600, cost: 2500 },
-    { level: 9, hp: 2000, cost: 4000 },
-    { level: 10, hp: 2500, cost: 6000 },
-    { level: 11, hp: 3200, cost: 8000 },
-    { level: 12, hp: 4000, cost: 12000 },
-    { level: 13, hp: 5000, cost: 18000 },
+    { hp: 35 },
+    { hp: 70,    regen: 1,   gold: 16 },
+    { hp: 140,   regen: 3,   gold: 32 },
+    { hp: 200,   regen: 5,   gold: 64 },
+    { hp: 250,   regen: 7,   gold: 128 },
+    { hp: 320,   regen: 10,  gold: 256 },
+    { hp: 640,   regen: 20,  gold: 512,    energy: 16 },
+    { hp: 1280,  regen: 28,  gold: 1024,   energy: 32 },
+    { hp: 2560,  regen: 39,  gold: 2048,   energy: 64 },
+    { hp: 5120,  regen: 51,  gold: 4096,   energy: 128 },
+    { hp: 10240, regen: 100, gold: 8192,   energy: 256 },
+    { hp: 20480, regen: 150, gold: 16384,  energy: 512 },
+    { hp: 40960, regen: 200, gold: 32768,  energy: 1024 },
   ],
 
-  // 炮台数据
+  // 炮台：atk=攻击；range=范围(格)；interval=攻击间隔(秒)；gen=升级所需发电机等级
   TOWER_DATA: [
-    { level: 1, atk: 5, range: 150, speed: 1.0, cost: 50 },
-    { level: 2, atk: 10, range: 160, speed: 0.9, cost: 80 },
-    { level: 3, atk: 15, range: 170, speed: 0.8, cost: 150 },
-    { level: 4, atk: 20, range: 180, speed: 0.7, cost: 300 },
-    { level: 5, atk: 30, range: 190, speed: 0.6, cost: 500 },
-    { level: 6, atk: 40, range: 200, speed: 0.5, cost: 800 },
-    { level: 7, atk: 55, range: 210, speed: 0.5, cost: 1200 },
-    { level: 8, atk: 70, range: 220, speed: 0.4, cost: 1800 },
-    { level: 9, atk: 90, range: 230, speed: 0.4, cost: 2800 },
-    { level: 10, atk: 120, range: 250, speed: 0.3, cost: 4000 },
-    { level: 11, atk: 160, range: 270, speed: 0.3, cost: 6000 },
-    { level: 12, atk: 200, range: 300, speed: 0.2, cost: 9000 },
+    { atk: 4,    range: 3, interval: 1.0,  gold: 8 },
+    { atk: 8,    range: 3, interval: 0.95, gold: 16 },
+    { atk: 16,   range: 3, interval: 0.9,  gold: 32 },
+    { atk: 32,   range: 3, interval: 0.85, gold: 64,     gen: 1 },
+    { atk: 64,   range: 3, interval: 0.8,  gold: 256 },
+    { atk: 128,  range: 4, interval: 0.75, gold: 512,    energy: 16,  gen: 2 },
+    { atk: 256,  range: 4, interval: 0.7,  gold: 1024,   energy: 32 },
+    { atk: 512,  range: 4, interval: 0.65, gold: 2048,   energy: 64,  gen: 3 },
+    { atk: 1024, range: 4, interval: 0.6,  gold: 4096,   energy: 128 },
+    { atk: 2048, range: 4, interval: 0.55, gold: 8192,   energy: 256, gen: 4 },
+    { atk: 4096, range: 4, interval: 0.5,  gold: 16384,  energy: 384 },
+    { atk: 8196, range: 5, interval: 0.45, gold: 32768,  energy: 512, gen: 5 },
   ],
 
-  // 发电机数据
+  // 发电机：output=能量/秒；gold=升到该级费用
   GENERATOR_DATA: [
-    { level: 1, output: 1, cost: 50 },
-    { level: 2, output: 2, cost: 120 },
-    { level: 3, output: 4, cost: 300 },
-    { level: 4, output: 8, cost: 600 },
+    { output: 0.5, gold: 200 },
+    { output: 1,   gold: 400 },
+    { output: 2,   gold: 800 },
+    { output: 4,   gold: 1600 },
+    { output: 6,   gold: 3200 },
+    { output: 8,   gold: 6400 },
+    { output: 10,  gold: 12800 },
+    { output: 15,  gold: 25600 },
+    { output: 20,  gold: 51200 },
+    { output: 30,  gold: 102400 },
   ],
 
-  // 矿场数据
+  // 矿场：energy=建造费用（能量）；income=金币/秒（按明细不持续耗电）
   MINE_DATA: [
-    { type: '铁矿', income: 8, cost: 100, powerCost: 1 },
-    { type: '铜矿', income: 32, cost: 400, powerCost: 3 },
-    { type: '银矿', income: 128, cost: 1500, powerCost: 8 },
-    { type: '金矿', income: 512, cost: 5000, powerCost: 20 },
+    { name: '铜矿',   income: 8,   energy: 128 },
+    { name: '银矿',   income: 32,  energy: 1024 },
+    { name: '金矿',   income: 128, energy: 2048 },
+    { name: '钻石矿', income: 512, energy: 4096 },
   ],
 
-  // 修复台
-  REPAIR_COST: 50, // 电力
+  // 修复台：pct=每秒恢复门最大血量百分比；energy=费用（第1级为建造价）
+  REPAIR_DATA: [
+    { pct: 1.0, energy: 128 },
+    { pct: 1.5, energy: 256 },
+    { pct: 2.0, energy: 1024 },
+  ],
+  REPAIR_LIMIT: 4,
 
-  // 特殊建筑
-  SPECIAL_BUILDINGS: {
-    shield: { name: '能量罩', desc: '大门血量<30%产生5秒无敌', cost: 80, category: 'defense' },
-    piggyBank: { name: '零钱罐', desc: '炮塔偷钱能力', cost: 60, category: 'defense' },
-    fridge: { name: '冰箱', desc: '敌人-20%攻击速度', cost: 70, category: 'defense' },
-    stunCharm: { name: '定身符', desc: '定住逃跑boss 2秒', cost: 90, category: 'passive' },
-    ring: { name: '乾坤圈', desc: '大门被攻击时反伤1%/秒', cost: 100, category: 'passive' },
-    drumstick: { name: '大鸡腿', desc: 'boss血量<30%直接造成10%伤害', cost: 120, category: 'passive' },
-    watchtower: { name: '瞭望塔', desc: '炮台+20%攻击范围', cost: 80, category: 'attack' },
-    accelerator: { name: '加速器', desc: '炮台+30%攻击速度', cost: 80, category: 'attack' },
-    emCannon: { name: '电磁弹射', desc: '炮台+40%攻击伤害', cost: 100, category: 'attack' },
+  // 特殊建筑：每种限1个，消耗能量建造
+  SPECIALS: {
+    shield:      { name: '能量罩',   desc: '门血量低于30%时获得3秒无敌（每局1次）', energy: 64,   category: 'defense' },
+    piggyBank:   { name: '零钱罐',   desc: '炮台射击时偷取金币（与炮台等级相关）',   energy: 128,  category: 'defense' },
+    fridge:      { name: '冰箱',     desc: '猛鬼攻击速度降低20%',                   energy: 256,  category: 'defense' },
+    stunCharm:   { name: '定身符',   desc: '猛鬼逃跑时定身2秒',                     energy: 128,  category: 'passive' },
+    ring:        { name: '乾坤圈',   desc: '猛鬼攻门时每秒受到1%最大生命伤害',      energy: 512,  category: 'passive' },
+    drumstick:   { name: '大鸡腿',   desc: '猛鬼血量低于30%时造成10%最大生命伤害',   energy: 2048, category: 'passive' },
+    watchtower:  { name: '瞭望塔',   desc: '全部炮台攻击范围+20%',                  energy: 256,  category: 'attack' },
+    accelerator: { name: '加速器',   desc: '全部炮台攻击速度+50%',                  energy: 2048, category: 'attack' },
+    emCannon:    { name: '电磁弹射', desc: '全部炮台伤害+40%',                      energy: 4096, category: 'attack' },
   },
 
-  // 关卡Boss数据
+  // 关卡与Boss（明细表）：next=升至下一级所需攻击次数；healCD=回血冷却
   LEVELS: [
-    { // 简单
-      name: '简单', color: '#4CAF50',
+    {
+      name: '简单', color: '#4CAF50', bossName: '海盗幽灵',
+      healCD: 0, canLevel: false,
+      cells: [[2, 1], [3, 1], [2, 3], [3, 3]],
       bossData: [
-        { level: 1, hp: 200, atk: 5, atkCount: 0 },
-        { level: 2, hp: 400, atk: 10, atkCount: 5 },
-        { level: 3, hp: 800, atk: 20, atkCount: 10 },
-        { level: 4, hp: 1600, atk: 40, atkCount: 15 },
-        { level: 5, hp: 3200, atk: 80, atkCount: 20 },
+        { level: 1, hp: 100, atk: 2, next: 0 },
       ],
     },
-    { // 困难
-      name: '困难', color: '#FF9800',
+    {
+      name: '困难', color: '#FF9800', bossName: '科学怪人',
+      healCD: 30, canLevel: true,
+      cells: [
+        [1, 1], [2, 1], [3, 1], [4, 1], [5, 1],
+        [1, 3], [2, 3], [3, 3], [4, 3], [5, 3],
+      ],
       bossData: [
-        { level: 1, hp: 400, atk: 10, atkCount: 0 },
-        { level: 2, hp: 800, atk: 20, atkCount: 5 },
-        { level: 3, hp: 1600, atk: 40, atkCount: 10 },
-        { level: 4, hp: 3200, atk: 80, atkCount: 15 },
-        { level: 5, hp: 6400, atk: 160, atkCount: 20 },
+        { level: 1, hp: 100,   atk: 2,   next: 5 },
+        { level: 2, hp: 200,   atk: 4,   next: 10 },
+        { level: 3, hp: 400,   atk: 8,   next: 15 },
+        { level: 4, hp: 1600,  atk: 32,  next: 20 },
+        { level: 5, hp: 3200,  atk: 64,  next: 25 },
+        { level: 6, hp: 6400,  atk: 128, next: 30 },
+        { level: 7, hp: 12800, atk: 256, next: 35 },
+        { level: 8, hp: 25600, atk: 512, next: 0 },
       ],
     },
-    { // 炼狱
-      name: '炼狱', color: '#F44336',
+    {
+      name: '炼狱', color: '#F44336', bossName: '生化丧尸',
+      healCD: 20, canLevel: true,
+      cells: [
+        [1, 0], [2, 0], [3, 0], [4, 0],
+        [1, 1], [2, 1], [3, 1], [4, 1], [5, 1],
+        [1, 3], [2, 3], [3, 3], [4, 3], [5, 3],
+        [1, 4], [2, 4], [3, 4], [4, 4],
+      ],
       bossData: [
-        { level: 4, hp: 3200, atk: 80, atkCount: 0 },
-        { level: 5, hp: 6400, atk: 160, atkCount: 10 },
-        { level: 6, hp: 12800, atk: 320, atkCount: 15 },
-        { level: 7, hp: 25600, atk: 640, atkCount: 20 },
+        { level: 4,  hp: 1600,   atk: 32,   next: 20 },
+        { level: 5,  hp: 3200,   atk: 64,   next: 25 },
+        { level: 6,  hp: 6400,   atk: 128,  next: 30 },
+        { level: 7,  hp: 12800,  atk: 256,  next: 35 },
+        { level: 8,  hp: 25600,  atk: 512,  next: 40 },
+        { level: 9,  hp: 51200,  atk: 1024, next: 45 },
+        { level: 10, hp: 102400, atk: 2048, next: 50 },
+        { level: 11, hp: 204800, atk: 4096, next: 55 },
+        { level: 12, hp: 409600, atk: 8192, next: 0 },
       ],
     },
   ],
@@ -177,82 +191,84 @@ const CONFIG = {
 
 // ========== 工具函数 ==========
 
-/** 加载图片，返回Promise */
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null); // 加载失败返回null
-    img.src = src;
-  });
-}
-
-/** 限制数值范围 */
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
-/** 两点距离 */
-function dist(x1, y1, x2, y2) {
-  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-}
-
-/** 线性插值 */
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-/** 格式化数字（大数缩写） */
-function formatNum(n) {
-  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
-  return Math.floor(n).toString();
-}
-
-/** 随机范围 */
 function randRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
-/** 简单音效生成器 */
+/** 格式化资源数值：小数值保留1位小数，大数用“万” */
+function formatRes(n) {
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  if (n >= 100) return Math.floor(n).toString();
+  return (Math.floor(n * 10) / 10).toString();
+}
+
+/** 加载单张图片，失败返回null */
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** 简单音效生成器（带节流与静音） */
 class SFX {
   constructor() {
     this.ctx = null;
-    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    this.muted = false;
+    this._lastHitAt = 0;
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { /* 无音频环境 */ }
   }
   resume() {
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
-  /** 播放简单音调 */
   play(freq, duration, type = 'square', vol = 0.1) {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted) return;
     this.resume();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + duration);
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) { /* 忽略音频错误 */ }
   }
-  hit() { this.play(200, 0.15, 'sawtooth', 0.08); }
+  hit() {
+    const now = performance.now();
+    if (now - this._lastHitAt < 70) return; // 限制多炮台叠音
+    this._lastHitAt = now;
+    this.play(200, 0.12, 'sawtooth', 0.05);
+  }
   build() { this.play(440, 0.1, 'sine', 0.06); }
   upgrade() { this.play(660, 0.15, 'sine', 0.08); }
-  bossHit() { this.play(100, 0.3, 'sawtooth', 0.12); }
+  bossHit() { this.play(100, 0.25, 'sawtooth', 0.1); }
   doorBreak() { this.play(60, 0.5, 'sawtooth', 0.15); }
-  win() { this.play(523, 0.2, 'sine', 0.1); setTimeout(() => this.play(659, 0.2, 'sine', 0.1), 200); setTimeout(() => this.play(784, 0.4, 'sine', 0.1), 400); }
-  lose() { this.play(300, 0.3, 'sawtooth', 0.1); setTimeout(() => this.play(200, 0.5, 'sawtooth', 0.1), 300); }
-  ghost() { this.play(800, 0.8, 'sine', 0.03); }
+  win() {
+    this.play(523, 0.2, 'sine', 0.1);
+    setTimeout(() => this.play(659, 0.2, 'sine', 0.1), 200);
+    setTimeout(() => this.play(784, 0.4, 'sine', 0.1), 400);
+  }
+  lose() {
+    this.play(300, 0.3, 'sawtooth', 0.1);
+    setTimeout(() => this.play(200, 0.5, 'sawtooth', 0.1), 300);
+  }
+  ghost() { this.play(800, 0.6, 'sine', 0.03); }
 }
 
 // ========== 游戏状态 ==========
 
-// 游戏状态枚举
 const STATE = { MENU: 0, SELECT_CHAR: 1, SELECT_LEVEL: 2, PLAYING: 3, PAUSED: 4, RESULT: 5 };
 
-// 全局游戏数据
 const game = {
   state: STATE.MENU,
   canvas: null,
@@ -260,195 +276,203 @@ const game = {
   W: 0, H: 0,
   scale: 1,
   dpr: 1,
+  muted: false,
 
-  // 资源
+  // 资源（局内）
   gold: CONFIG.INIT_GOLD,
   power: CONFIG.INIT_POWER,
 
   // 选择
-  charGender: 'male', // male / female
+  charGender: 'male',
   levelIndex: 0,
 
   // 时间
-  gameTime: 0,       // 游戏总时间
-  prepareTime: CONFIG.PREPARE_TIME,
-  bossSpawnTimer: 0,
+  gameTime: 0,
+  bossSpawnTimer: CONFIG.FIRST_BOSS_TIME,
   lastTimestamp: 0,
 
   // 实体
-  buildings: [],      // 网格上的建筑
-  bosses: [],         // 当前所有boss
-  projectiles: [],    // 弹道
-  floatTexts: [],     // 飘字
-  particles: [],      // 粒子
+  buildings: [],
+  bosses: [],
+  projectiles: [],
+  floatTexts: [],
+  particles: [],
 
-  // 房间网格
-  grid: [],           // 7x5 二维数组
-
-  // 门
+  grid: [],
+  cells: new Set(),      // 本关可建造格白名单 "col,row"
   door: null,
-  // 床
   bed: null,
-  // 玩家
   player: null,
-
-  // 特殊建筑激活状态
-  specials: {},
+  flags: {},             // 单局一次性标记（如能量罩已用）
 
   // UI状态
   ui: {
-    buildPanelOpen: false,
     selectedBuildType: null,
-    selectedCell: null,   // {col, row}
-    infoPopup: null,      // 显示建筑信息的弹窗
+    hoverCell: null,
+    infoPopup: null,
     shopOpen: false,
-    shopTab: 'defense',   // defense / passive / attack
+    shopTab: 'defense',
+    demolishConfirm: null,
   },
 
   // 氛围
-  flickerTimer: 0,
-  flickerAlpha: 0,
-  ghostTimer: 0,
-  ghostAlpha: 0,
-  ghostX: 0, ghostY: 0,
-  shakeAmount: 0,
-  shakeTimer: 0,
+  flickerTimer: 0, flickerAlpha: 0,
+  ghostTimer: 0, ghostAlpha: 0, ghostLx: 0, ghostLy: 0,
+  shakeAmount: 0, shakeTimer: 0,
 
   // 结算
-  result: null, // 'win' / 'lose'
+  result: null,
   resultStats: { bossesKilled: 0, timeSurvived: 0, goldEarned: 0 },
+  _winPending: false,
 
-  // 素材缓存
-  images: {},
-  imagesLoaded: false,
-
-  // 音效
   sfx: new SFX(),
 
-  // 动画帧
-  animFrame: 0,
   animTimer: 0,
+  animFrame: 0,
 };
 
-// ========== 素材加载 ==========
+// ========== 素材清单与预加载（渲染阶段不再发起请求） ==========
 
-/** 预加载所有素材 */
-async function loadAllAssets() {
-  const paths = {};
-  // UI素材
-  for (const [key, val] of Object.entries(CONFIG.ASSETS.UI)) {
-    paths['ui_' + key] = val;
+const IMG = {}; // key -> Image | null
+
+/** 生成完整素材清单：key -> 候选路径数组（按顺序回退） */
+function buildAssetManifest() {
+  const m = {};
+  const put = (key, paths) => { m[key] = paths; };
+
+  // UI 与地图
+  put('ui_MENU_BG', ['微恐塔防素材/UI素材/首页/局外背景图.jpg']);
+  put('ui_START_BTN', ['微恐塔防素材/UI素材/首页/开始游戏按钮.png']);
+  put('ui_COIN_FRAME', ['微恐塔防素材/UI素材/首页/货币持有框.png']);
+  put('ui_SELECT_BG', ['微恐塔防素材/UI素材/首页/选角背景.png']);
+  put('ui_WIN_RESULT', ['微恐塔防素材/UI素材/结算页/成功结算.png']);
+  put('ui_LOSE_RESULT', ['微恐塔防素材/UI素材/结算页/失败结算.png']);
+  put('ui_GAME_SHOP', ['微恐塔防素材/UI素材/弹窗/局内商店弹窗.png']);
+  // 关卡顺序：简单=幽灵船，困难=废弃医院，炼狱=末日堡垒
+  put('room_0', ['微恐塔防素材/房间地图/幽灵船.jpg']);
+  put('room_1', ['微恐塔防素材/房间地图/废弃医院.png']);
+  put('room_2', ['微恐塔防素材/房间地图/末日堡垒.jpg']);
+
+  // 门 1-13
+  for (let i = 1; i <= 13; i++) put('door_' + i, ['微恐塔防素材/门/透视版/' + i + '.png']);
+
+  // 床 1-10（5级素材缺失，回退用4级外观）
+  put('bed_1', ['微恐塔防素材/床/微恐床/1级床.png']);
+  for (let i = 2; i <= 10; i++) {
+    if (i === 5) put('bed_5', ['微恐塔防素材/床/微恐床/5.png', '微恐塔防素材/床/微恐床/4.png']);
+    else put('bed_' + i, ['微恐塔防素材/床/微恐床/' + i + '.png']);
   }
-  // 房间地图
-  CONFIG.ASSETS.ROOMS.forEach((p, i) => { paths['room_' + i] = p; });
 
-  const promises = Object.entries(paths).map(async ([key, src]) => {
-    const img = await loadImage(src);
-    game.images[key] = img;
-  });
+  // 炮台 1-12（等级外观，非动画帧）
+  for (let i = 1; i <= 12; i++) put('tower_' + i, ['微恐塔防素材/炮台/简易版/炮台简易版_' + (i - 1) + '.png']);
 
-  await Promise.all(promises);
-  game.imagesLoaded = true;
+  // 发电机 1-10（可用素材共10张）
+  const genFiles = [0, 2, 3, 6, 7, 9, 11, 12, 13, 14];
+  for (let i = 1; i <= 10; i++) put('gen_' + i, ['微恐塔防素材/发电机/发电机_' + genFiles[i - 1] + '.png']);
+
+  // 修复台 1-3
+  for (let i = 1; i <= 3; i++) put('repair_' + i, ['微恐塔防素材/修复台/修复台_' + (i - 1) + '.png']);
+
+  // 玩家（男性有效帧 0,1,2,4,5,7；女性 0-5）
+  const maleFrames = [0, 1, 2, 4, 5, 7];
+  const femaleFrames = [0, 1, 2, 3, 4, 5];
+  for (const f of maleFrames) {
+    put('player_m_stand_' + f, ['微恐塔防素材/玩家/男性角色/站立-男玩家_' + f + '.png']);
+    put('player_m_sleep_' + f, ['微恐塔防素材/玩家/男性角色/睡觉-男玩家_' + f + '.png']);
+  }
+  for (const f of femaleFrames) {
+    put('player_f_stand_' + f, ['微恐塔防素材/玩家/女性角色/站立-女玩家_' + f + '.png']);
+    put('player_f_sleep_' + f, ['微恐塔防素材/玩家/女性角色/睡觉-女玩家_' + f + '.png']);
+  }
+
+  // Boss（大/小 × 待机/攻击 × 3帧）
+  for (let f = 0; f < 3; f++) {
+    put('boss_big_idle_' + f, ['微恐塔防素材/boss/boss大_' + f + '.png']);
+    put('boss_big_atk_' + f, ['微恐塔防素材/boss/boss大攻击_' + f + '.png']);
+    put('boss_small_idle_' + f, ['微恐塔防素材/boss/小boss_' + f + '.png']);
+    put('boss_small_atk_' + f, ['微恐塔防素材/boss/小boss攻击_' + f + '.png']);
+  }
+  return m;
+}
+
+/** 预加载全部素材：每个key依次尝试候选路径，失败仅记录一次 */
+function preloadAssets() {
+  const manifest = buildAssetManifest();
+  for (const [key, paths] of Object.entries(manifest)) {
+    IMG[key] = null;
+    (async () => {
+      for (const p of paths) {
+        const img = await loadImage(p);
+        if (img) { IMG[key] = img; return; }
+      }
+      // 全部失败保持null，渲染使用矢量兜底
+    })();
+  }
 }
 
 // ========== 实体类 ==========
 
-/** 建筑基类 */
+/** 建筑基类：记录网格位置与累计投入（用于25%拆除返还） */
 class Building {
   constructor(type, col, row) {
     this.type = type;
     this.col = col;
     this.row = row;
     this.level = 1;
+    this.investedGold = 0;
+    this.investedEnergy = 0;
   }
-  get x() { return gridToX(this.col); }
-  get y() { return gridToY(this.row); }
 }
 
-/** 床 */
+/** 床（局内1个，核心经济） */
 class Bed extends Building {
   constructor(col, row) {
     super('bed', col, row);
-    this.level = 1;
   }
   get income() { return CONFIG.BED_DATA[this.level - 1].income; }
-  get upgradeCost() {
-    return this.level < CONFIG.BED_DATA.length ? CONFIG.BED_DATA[this.level].cost : null;
-  }
-  canUpgrade() { return this.level < CONFIG.BED_DATA.length; }
-  upgrade() {
-    if (!this.canUpgrade()) return false;
-    const cost = this.upgradeCost;
-    if (game.gold < cost) return false;
-    game.gold -= cost;
-    this.level++;
-    game.sfx.upgrade();
-    addFloatText(this.x, this.y - 20, '床升级!', '#4CAF50');
-    return true;
-  }
 }
 
-/** 门 */
+/** 门（局内1个，自带等级自愈） */
 class Door {
   constructor() {
-    this.type = 'door'; // 兼容信息弹窗
+    this.type = 'door';
     this.level = 1;
     this.maxHp = CONFIG.DOOR_DATA[0].hp;
     this.hp = this.maxHp;
     this.invincible = false;
     this.invincibleTimer = 0;
     this.col = 0;
-    this.row = 2; // 中间行
-    this.canUpgrade = () => this.level < CONFIG.DOOR_DATA.length;
+    this.row = 2;
+    this.investedGold = 0;
+    this.investedEnergy = 0;
   }
-  get x() { return gridToX(this.col); }
-  get y() { return gridToY(this.row); }
-  get upgradeCost() {
-    return this.level < CONFIG.DOOR_DATA.length ? CONFIG.DOOR_DATA[this.level].cost : null;
+  get regen() { return CONFIG.DOOR_DATA[this.level - 1].regen || 0; }
+  update(dt) {
+    if (this.invincible) {
+      this.invincibleTimer -= dt;
+      if (this.invincibleTimer <= 0) this.invincible = false;
+    }
+    // 等级自愈
+    if (this.regen > 0 && this.hp > 0) {
+      this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
+    }
   }
-  canUpgrade() { return this.level < CONFIG.DOOR_DATA.length; }
-  upgrade() {
-    if (!this.canUpgrade()) return false;
-    const cost = this.upgradeCost;
-    if (game.gold < cost) return false;
-    game.gold -= cost;
-    this.level++;
-    const data = CONFIG.DOOR_DATA[this.level - 1];
-    this.maxHp = data.hp;
-    this.hp = this.maxHp;
-    game.sfx.upgrade();
-    addFloatText(this.x, this.y - 20, '门升级!', '#4CAF50');
-    return true;
-  }
-  /** 受到伤害 */
   takeDamage(dmg) {
-    if (this.invincible) return;
+    if (this.invincible || this.hp <= 0) return;
     this.hp -= dmg;
     game.shakeAmount = 5;
     game.shakeTimer = 0.2;
     game.sfx.bossHit();
-    // 能量罩检测
-    if (game.specials.shield && this.hp / this.maxHp < 0.3 && !this.invincible) {
+    // 能量罩：门血量跌破30%时3秒无敌，每局1次
+    if (hasSpecial('shield') && !game.flags.shieldUsed && this.hp > 0 && this.hp / this.maxHp < 0.3) {
+      game.flags.shieldUsed = true;
       this.invincible = true;
-      this.invincibleTimer = 5;
-      addFloatText(this.x, this.y - 30, '能量罩!', '#00BCD4');
+      this.invincibleTimer = 3;
+      addFloatText(0.5, 1.9, '能量罩!', '#00BCD4');
     }
     if (this.hp <= 0) {
       this.hp = 0;
       game.sfx.doorBreak();
-    }
-  }
-  /** 每帧更新 */
-  update(dt) {
-    // 修复台回血
-    if (game.specials.repair) {
-      const heal = this.maxHp * 0.01 * dt;
-      this.hp = Math.min(this.maxHp, this.hp + heal);
-    }
-    // 无敌时间
-    if (this.invincible) {
-      this.invincibleTimer -= dt;
-      if (this.invincibleTimer <= 0) this.invincible = false;
     }
   }
 }
@@ -457,77 +481,52 @@ class Door {
 class Tower extends Building {
   constructor(col, row) {
     super('tower', col, row);
-    this.level = 1;
     this.atkTimer = 0;
     this.target = null;
     this.angle = 0;
   }
+  get baseData() { return CONFIG.TOWER_DATA[this.level - 1]; }
   get atk() {
-    let base = CONFIG.TOWER_DATA[this.level - 1].atk;
-    if (game.specials.emCannon) base *= 1.4;
-    return base;
+    return this.baseData.atk * (hasSpecial('emCannon') ? 1.4 : 1);
   }
-  get range() {
-    let base = CONFIG.TOWER_DATA[this.level - 1].range;
-    if (game.specials.watchtower) base *= 1.2;
-    return base * game.scale;
+  get rangeCells() {
+    return this.baseData.range * (hasSpecial('watchtower') ? 1.2 : 1);
   }
-  get speed() {
-    let base = CONFIG.TOWER_DATA[this.level - 1].speed;
-    if (game.specials.accelerator) base *= 0.7;
-    return base;
+  get interval() {
+    return this.baseData.interval / (hasSpecial('accelerator') ? 1.5 : 1);
   }
-  get upgradeCost() {
-    return this.level < CONFIG.TOWER_DATA.length ? CONFIG.TOWER_DATA[this.level].cost : null;
-  }
-  canUpgrade() { return this.level < CONFIG.TOWER_DATA.length; }
-  upgrade() {
-    if (!this.canUpgrade()) return false;
-    const cost = this.upgradeCost;
-    if (game.gold < cost) return false;
-    game.gold -= cost;
-    this.level++;
-    game.sfx.upgrade();
-    addFloatText(this.x, this.y - 20, '炮台升级!', '#4CAF50');
-    return true;
-  }
-  /** 寻找目标 */
-  findTarget() {
-    let closest = null;
-    let minDist = this.range;
-    for (const boss of game.bosses) {
-      if (boss.dead) continue;
-      const d = dist(this.x, this.y, boss.x, boss.y);
-      if (d < minDist) {
-        minDist = d;
-        closest = boss;
-      }
-    }
-    return closest;
-  }
-  /** 更新炮台逻辑 */
   update(dt) {
-    this.atkTimer -= dt;
     this.target = this.findTarget();
     if (this.target) {
-      this.angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+      this.angle = Math.atan2(this.target.ly - (this.row + 0.5), this.target.lx - (this.col + 0.5));
+      this.atkTimer -= dt;
       if (this.atkTimer <= 0) {
         this.shoot();
-        this.atkTimer = this.speed;
+        this.atkTimer = this.interval;
       }
+    } else {
+      this.atkTimer = Math.min(this.atkTimer, this.interval);
     }
   }
-  /** 发射弹道 */
+  findTarget() {
+    let best = null;
+    let bestDist = this.rangeCells;
+    for (const boss of game.bosses) {
+      if (boss.dead) continue;
+      const d = Math.hypot(boss.lx - (this.col + 0.5), boss.ly - (this.row + 0.5));
+      if (d < bestDist) { bestDist = d; best = boss; }
+    }
+    return best;
+  }
   shoot() {
     if (!this.target) return;
-    game.projectiles.push(new Projectile(
-      this.x, this.y, this.target, this.atk
-    ));
+    game.projectiles.push(new Projectile(this.col + 0.5, this.row + 0.5, this.target, this.atk));
     game.sfx.hit();
-    // 零钱罐偷钱
-    if (game.specials.piggyBank && this.target) {
-      const stolen = Math.ceil(this.target.level * 2);
+    // 零钱罐：炮台射击偷钱（与炮台等级相关）
+    if (hasSpecial('piggyBank')) {
+      const stolen = this.level * 2;
       game.gold += stolen;
+      game.resultStats.goldEarned += stolen;
     }
   }
 }
@@ -536,23 +535,8 @@ class Tower extends Building {
 class Generator extends Building {
   constructor(col, row) {
     super('generator', col, row);
-    this.level = 1;
   }
   get output() { return CONFIG.GENERATOR_DATA[this.level - 1].output; }
-  get upgradeCost() {
-    return this.level < CONFIG.GENERATOR_DATA.length ? CONFIG.GENERATOR_DATA[this.level].cost : null;
-  }
-  canUpgrade() { return this.level < CONFIG.GENERATOR_DATA.length; }
-  upgrade() {
-    if (!this.canUpgrade()) return false;
-    const cost = this.upgradeCost;
-    if (game.gold < cost) return false;
-    game.gold -= cost;
-    this.level++;
-    game.sfx.upgrade();
-    addFloatText(this.x, this.y - 20, '发电机升级!', '#4CAF50');
-    return true;
-  }
 }
 
 /** 矿场 */
@@ -560,199 +544,174 @@ class Mine extends Building {
   constructor(col, row, mineIndex) {
     super('mine', col, row);
     this.mineIndex = mineIndex;
-    this.level = 1;
   }
   get income() { return CONFIG.MINE_DATA[this.mineIndex].income; }
-  get powerCost() { return CONFIG.MINE_DATA[this.mineIndex].powerCost; }
+  get mineName() { return CONFIG.MINE_DATA[this.mineIndex].name; }
 }
 
-/** 修复台 */
+/** 修复台（最多4台） */
 class RepairStation extends Building {
   constructor(col, row) {
     super('repair', col, row);
   }
+  get pct() { return CONFIG.REPAIR_DATA[this.level - 1].pct; }
 }
 
-/** 特殊建筑 */
+/** 特殊建筑（每种限1个） */
 class SpecialBuilding extends Building {
   constructor(col, row, specialKey) {
     super('special', col, row);
     this.specialKey = specialKey;
   }
+  get specialName() { return CONFIG.SPECIALS[this.specialKey].name; }
 }
 
-/** Boss实体 */
+/** Boss：统一状态机 approach / attack / retreat / heal + dead */
 class Boss {
-  constructor(levelIndex, bossLevelIndex) {
-    const levelData = CONFIG.LEVELS[levelIndex];
-    const bossData = levelData.bossData[bossLevelIndex];
-    this.levelIndex = levelIndex;
-    this.bossLevelIndex = bossLevelIndex;
-    this.level = bossData.level;
-    this.maxHp = bossData.hp;
-    this.hp = this.maxHp;
-    this.atk = bossData.atk;
-    this.atkCountNeeded = bossData.atkCount;
-    this.atkCount = 0;
-    this.dead = false;
-    this.retreating = false;
-    this.healing = false;
-    this.healTimer = 0;
+  constructor() {
+    this.lv = CONFIG.LEVELS[game.levelIndex];
+    this.applyLevel(0);
+    this.state = 'approach';
     this.stunTimer = 0;
-    // 位置：从左侧门外出生
-    this.spawnX = gridToX(0) - 80 * game.scale;
-    this.spawnY = gridToY(2);
-    this.x = this.spawnX;
-    this.y = this.spawnY;
-    this.targetX = gridToX(0); // 门的x位置
-    this.speed = 40 * game.scale;
-    this.atkTimer = 0;
-    this.atkInterval = 1.0; // 每秒攻击一次
+    this.healTimer = 0;
+    this.spawnLx = -1.6;
+    this.lx = this.spawnLx;
+    this.ly = 2.5;              // 沿中间行走线
+    this.targetLx = -0.25;      // 停在门前
+    this.atkTimer = 0.5;
     this.animTimer = 0;
-    this.isAttacking = false;
     this.atkAnimTimer = 0;
-    // 冰箱减速
-    this.slowed = false;
+    this.isAttacking = false;
+    this.dead = false;
+    this._drumstick = false;
   }
-  /** 更新Boss逻辑 */
+  applyLevel(idx) {
+    const d = this.lv.bossData[idx];
+    this.idx = idx;
+    this.level = d.level;
+    this.maxHp = d.hp;
+    this.hp = d.hp;
+    this.atk = d.atk;
+    this.next = d.next || 0;
+    this.atkCount = 0;
+  }
   update(dt) {
     if (this.dead) return;
     this.animTimer += dt;
 
-    // 定身状态
+    // 定身（独立计时，覆盖所有状态）
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
       return;
     }
 
-    // 回血状态
-    if (this.healing) {
+    // 回血：回到出生点后按冷却时间回满
+    if (this.state === 'heal') {
       this.healTimer -= dt;
-      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.033 * dt);
+      this.hp = Math.min(this.maxHp, this.hp + (this.maxHp * dt / this.lv.healCD));
       if (this.healTimer <= 0) {
-        this.healing = false;
-        this.retreating = false;
-        // 重新进攻
         this.hp = this.maxHp;
+        this.state = 'approach';
       }
       return;
     }
 
-    // 撤退
-    if (this.retreating) {
-      const dx = this.spawnX - this.x;
-      const moveSpeed = this.speed * 1.5;
-      if (Math.abs(dx) > 2) {
-        this.x += Math.sign(dx) * moveSpeed * dt;
+    // 撤退：返回出生点
+    if (this.state === 'retreat') {
+      if (this.lx < this.spawnLx - 0.02) {
+        this.lx = Math.min(this.spawnLx, this.lx + 0.75 * dt);
       } else {
-        this.x = this.spawnX;
-        this.healing = true;
-        this.healTimer = 30;
+        this.lx = this.spawnLx;
+        this.state = 'heal';
+        this.healTimer = this.lv.healCD;
       }
       return;
     }
 
-    // 向门移动
-    const dx = this.targetX - this.x;
-    if (Math.abs(dx) > 5) {
-      this.x += Math.sign(dx) * this.speed * dt;
+    // 接近门
+    if (this.state === 'approach') {
       this.isAttacking = false;
-    } else {
-      // 到达门，开始攻击
-      this.isAttacking = true;
-      this.atkAnimTimer += dt;
-      this.atkTimer -= dt;
-      if (this.atkTimer <= 0) {
-        this.attackDoor();
-        this.atkTimer = this.atkInterval;
-        // 冰箱减速
-        if (game.specials.fridge) {
-          this.atkTimer = this.atkInterval * 1.2;
-        }
+      if (this.lx < this.targetLx) {
+        this.lx = Math.min(this.targetLx, this.lx + 0.5 * dt);
       }
+      if (this.lx >= this.targetLx - 0.001) this.state = 'attack';
+      return;
+    }
+
+    // 攻门
+    this.isAttacking = true;
+    this.atkAnimTimer += dt;
+
+    // 乾坤圈：攻门期间每秒受到1%最大生命伤害（dt计，帧率无关）
+    if (hasSpecial('ring')) {
+      this.takeDamage(this.maxHp * 0.01 * dt, true);
+    }
+    if (this.dead || this.state !== 'attack') return;
+
+    this.atkTimer -= dt;
+    if (this.atkTimer <= 0) {
+      this.attackDoor();
+      let interval = 1.0;
+      if (hasSpecial('fridge')) interval *= 1.25; // 冰箱：攻速-20%
+      this.atkTimer = interval;
     }
   }
-  /** 攻击门 */
   attackDoor() {
-    if (!game.door) return;
-    game.door.takeDamage(this.atk);
+    if (game.door) game.door.takeDamage(this.atk);
     this.atkCount++;
-    // 乾坤圈反伤
-    if (game.specials.ring) {
-      this.hp -= this.maxHp * 0.01;
-      if (this.hp <= 0) this.hp = 0;
-    }
-    // 检查升级
-    this.checkUpgrade();
-  }
-  /** 检查是否升级 */
-  checkUpgrade() {
-    if (this.atkCountNeeded > 0 && this.atkCount >= this.atkCountNeeded) {
-      const levelData = CONFIG.LEVELS[this.levelIndex];
-      const nextIdx = this.bossLevelIndex + 1;
-      if (nextIdx < levelData.bossData.length) {
-        this.bossLevelIndex = nextIdx;
-        const newData = levelData.bossData[nextIdx];
-        this.level = newData.level;
-        this.maxHp = newData.hp;
-        this.hp = this.maxHp;
-        this.atk = newData.atk;
-        this.atkCountNeeded = newData.atkCount;
-        this.atkCount = 0;
-        addFloatText(this.x, this.y - 40, 'Boss升级!', '#FF5722');
-      }
+    // 升级：读取“升至下一级所需攻击次数”
+    if (this.lv.canLevel && this.next > 0 && this.atkCount >= this.next
+        && this.idx < this.lv.bossData.length - 1) {
+      this.applyLevel(this.idx + 1);
+      addFloatText(this.lx, this.ly - 0.8, 'Boss升级! Lv.' + this.level, '#FF5722');
     }
   }
-  /** 受到伤害 */
-  takeDamage(dmg) {
-    if (this.dead) return;
+  /** 统一伤害入口：先判死亡，再判非致死低血撤退 */
+  takeDamage(dmg, silent) {
+    if (this.dead || game.state !== STATE.PLAYING) return;
     this.hp -= dmg;
-    addFloatText(this.x + randRange(-10, 10), this.y - 20, '-' + Math.floor(dmg), '#FF5722');
-    // 大鸡腿：boss血量低于30%时直接造成10%伤害（仅触发一次）
-    if (game.specials.drumstick && this.hp / this.maxHp < 0.3 && !this._drumstickUsed) {
-      this._drumstickUsed = true;
+    if (!silent && dmg >= 1) {
+      addFloatText(this.lx + randRange(-0.1, 0.1), this.ly - 0.4, '-' + Math.round(dmg), '#FF5722');
+    }
+    // 大鸡腿：首次跌破30%时额外造成10%最大生命伤害
+    if (hasSpecial('drumstick') && !this._drumstick && this.hp > 0 && this.hp / this.maxHp < 0.3) {
+      this._drumstick = true;
       this.hp -= this.maxHp * 0.1;
-      addFloatText(this.x, this.y - 50, '大鸡腿!', '#FF9800');
+      addFloatText(this.lx, this.ly - 0.9, '大鸡腿!', '#FF9800');
     }
-    // 血量低于30%时触发撤退
-    if (this.hp / this.maxHp < 0.3 && !this.retreating && !this.healing) {
-      this.retreating = true;
-      // 定身符：撤退时定住2秒
-      if (game.specials.stunCharm) {
-        this.stunTimer = 2;
-        addFloatText(this.x, this.y - 40, '定身!', '#9C27B0');
-      }
-    }
-    // boss死亡判定
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
       game.resultStats.bossesKilled++;
-      addFloatText(this.x, this.y - 30, '击杀!', '#FFD700');
-      // 击杀奖励金币
       const reward = this.level * 20;
       game.gold += reward;
       game.resultStats.goldEarned += reward;
-      addFloatText(this.x, this.y - 50, '+' + reward + '金', '#FFD700');
-      // 核心胜利条件：击杀撤退中的boss则获胜
-      if (this.retreating) {
-        game.result = 'win';
-        game.state = STATE.RESULT;
-        game.resultStats.timeSurvived = game.gameTime;
-        game.sfx.win();
+      addFloatText(this.lx, this.ly - 0.6, '击杀!', '#FFD700');
+      addFloatText(this.lx, this.ly - 1.0, '+' + reward + '金', '#FFD700');
+      game._winPending = true; // 击杀任意猛鬼即获胜
+      return;
+    }
+    // 非致死且低于30%：撤退回血（简单难度不撤退）
+    if (this.lv.healCD > 0 && this.state !== 'retreat' && this.state !== 'heal'
+        && this.hp / this.maxHp < 0.3) {
+      this.state = 'retreat';
+      addFloatText(this.lx, this.ly - 0.8, 'Boss撤退!', '#FF9800');
+      if (hasSpecial('stunCharm')) {
+        this.stunTimer = 2;
+        addFloatText(this.lx, this.ly - 1.2, '定身!', '#9C27B0');
       }
     }
   }
 }
 
-/** 弹道 */
+/** 弹道（逻辑坐标，格/秒） */
 class Projectile {
-  constructor(x, y, target, damage) {
-    this.x = x;
-    this.y = y;
+  constructor(lx, ly, target, damage) {
+    this.lx = lx;
+    this.ly = ly;
     this.target = target;
     this.damage = damage;
-    this.speed = 400 * game.scale;
+    this.speed = 6; // 格/秒
     this.dead = false;
   }
   update(dt) {
@@ -760,110 +719,369 @@ class Projectile {
       this.dead = true;
       return;
     }
-    const dx = this.target.x - this.x;
-    const dy = this.target.y - this.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < 10) {
+    const dx = this.target.lx - this.lx;
+    const dy = this.target.ly - this.ly;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.15) {
       this.target.takeDamage(this.damage);
       this.dead = true;
       return;
     }
-    this.x += (dx / d) * this.speed * dt;
-    this.y += (dy / d) * this.speed * dt;
+    this.lx += (dx / d) * this.speed * dt;
+    this.ly += (dy / d) * this.speed * dt;
   }
 }
 
-/** 飘字效果 */
+/** 飘字（逻辑坐标） */
 class FloatText {
-  constructor(x, y, text, color) {
-    this.x = x;
-    this.y = y;
+  constructor(lx, ly, text, color) {
+    this.lx = lx;
+    this.ly = ly;
     this.text = text;
     this.color = color;
     this.life = 1.0;
-    this.vy = -40;
   }
   update(dt) {
-    this.y += this.vy * dt;
+    this.ly -= 0.5 * dt;
     this.life -= dt * 1.2;
   }
 }
 
-/** 粒子 */
+/** 粒子（逻辑坐标，格/秒） */
 class Particle {
-  constructor(x, y, color) {
-    this.x = x;
-    this.y = y;
-    this.vx = randRange(-60, 60);
-    this.vy = randRange(-80, 20);
+  constructor(lx, ly, color) {
+    this.lx = lx;
+    this.ly = ly;
+    this.vx = randRange(-0.5, 0.5);
+    this.vy = randRange(-0.8, 0.2);
     this.life = randRange(0.3, 0.8);
     this.color = color;
     this.size = randRange(2, 5);
   }
   update(dt) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.vy += 100 * dt;
+    this.lx += this.vx * dt;
+    this.ly += this.vy * dt;
+    this.vy += 1.2 * dt;
     this.life -= dt;
   }
 }
 
-// ========== 网格与坐标工具 ==========
+// ========== 网格与坐标（统一逻辑坐标系：单位=格） ==========
+
+/** 底部建造面板布局（窄屏自动两行，触控热区≥44px） */
+function buildPanelLayout() {
+  const gap = 6;
+  const count = 8;
+  const cols = game.W >= count * 62 + (count + 1) * gap ? 8 : 4;
+  const rows = Math.ceil(count / cols);
+  const btnW = Math.min(78 * game.scale, (game.W - gap * (cols + 1)) / cols);
+  const btnH = Math.max(44, Math.min(btnW, 64 * game.scale));
+  const panelH = rows * (btnH + gap) + gap + 4;
+  return { cols, rows, btnW, btnH, gap, panelH };
+}
 
 /** 计算游戏区域参数 */
 function getGameArea() {
   const W = game.W;
   const H = game.H;
-  // 游戏区域：居中，留出顶部资源栏和底部建造面板
-  const topBar = 50 * game.scale;
-  const bottomBar = 100 * game.scale;
-  const areaW = W * 0.9;
-  const areaH = H - topBar - bottomBar;
+  const layout = buildPanelLayout();
+  const topBar = Math.max(40, 46 * game.scale);
+  const bottomBar = layout.panelH + 12;
+  const areaW = Math.min(W * 0.92, 760 * game.scale);
+  const areaH = Math.max(120, H - topBar - bottomBar - 8);
   const areaX = (W - areaW) / 2;
-  const areaY = topBar;
+  const areaY = topBar + 4;
   return { areaX, areaY, areaW, areaH, topBar, bottomBar };
 }
 
-/** 网格列转X坐标 */
-function gridToX(col) {
+function cellSize() {
   const area = getGameArea();
-  const cellW = area.areaW / CONFIG.GRID_COLS;
-  return area.areaX + col * cellW + cellW / 2;
+  return { cw: area.areaW / CONFIG.GRID_COLS, ch: area.areaH / CONFIG.GRID_ROWS };
 }
 
-/** 网格行转Y坐标 */
-function gridToY(row) {
+/** 逻辑坐标(格) -> 屏幕坐标 */
+function w2s(lx, ly) {
   const area = getGameArea();
-  const cellH = area.areaH / CONFIG.GRID_ROWS;
-  return area.areaY + row * cellH + cellH / 2;
+  const s = cellSize();
+  return { x: area.areaX + lx * s.cw, y: area.areaY + ly * s.ch };
 }
 
-/** 像素坐标转网格 */
+/** 屏幕坐标 -> 逻辑坐标(格) */
+function s2w(px, py) {
+  const area = getGameArea();
+  const s = cellSize();
+  return { lx: (px - area.areaX) / s.cw, ly: (py - area.areaY) / s.ch };
+}
+
+/** 像素坐标转网格（越界返回null） */
 function posToGrid(px, py) {
-  const area = getGameArea();
-  const cellW = area.areaW / CONFIG.GRID_COLS;
-  const cellH = area.areaH / CONFIG.GRID_ROWS;
-  const col = Math.floor((px - area.areaX) / cellW);
-  const row = Math.floor((py - area.areaY) / cellH);
+  const w = s2w(px, py);
+  const col = Math.floor(w.lx);
+  const row = Math.floor(w.ly);
   if (col < 0 || col >= CONFIG.GRID_COLS || row < 0 || row >= CONFIG.GRID_ROWS) return null;
   return { col, row };
 }
 
-/** 添加飘字 */
-function addFloatText(x, y, text, color) {
-  game.floatTexts.push(new FloatText(x, y, text, color));
+function addFloatText(lx, ly, text, color) {
+  if (game.floatTexts.length > 60) game.floatTexts.shift();
+  game.floatTexts.push(new FloatText(lx, ly, text, color));
 }
 
-/** 添加粒子 */
-function addParticles(x, y, color, count) {
+function addParticles(lx, ly, color, count) {
+  if (game.particles.length > 300) return;
   for (let i = 0; i < count; i++) {
-    game.particles.push(new Particle(x, y, color));
+    game.particles.push(new Particle(lx, ly, color));
   }
+}
+
+// ========== 建筑统一操作（建造/升级/拆除/费用） ==========
+
+/** 是否已拥有某特殊建筑 */
+function hasSpecial(key) {
+  return game.buildings.some((b) => b.type === 'special' && b.specialKey === key);
+}
+
+/** 当前最高发电机等级 */
+function maxGenLevel() {
+  let m = 0;
+  for (const b of game.buildings) {
+    if (b.type === 'generator') m = Math.max(m, b.level);
+  }
+  return m;
+}
+
+/** 某炮台等级所需的发电机等级 */
+function genReqForTower(towerLevel) {
+  if (towerLevel >= 12) return 5;
+  if (towerLevel >= 10) return 4;
+  if (towerLevel >= 8) return 3;
+  if (towerLevel >= 6) return 2;
+  if (towerLevel >= 4) return 1;
+  return 0;
+}
+
+/** 修复台数量 */
+function repairCount() {
+  return game.buildings.filter((b) => b.type === 'repair').length;
+}
+
+/** 是否有可放置的空格 */
+function hasEmptyCell() {
+  for (const key of game.cells) {
+    const [c, r] = key.split(',').map(Number);
+    if (!game.grid[r][c]) return true;
+  }
+  return false;
+}
+
+/** 格子是否可建造（白名单 + 空位） */
+function canPlaceAt(col, row) {
+  if (!game.cells.has(col + ',' + row)) return false;
+  if (game.grid[row] && game.grid[row][col]) return false;
+  return true;
+}
+
+function costText(cost) {
+  const parts = [];
+  if (cost.gold) parts.push(formatRes(cost.gold) + '金');
+  if (cost.energy) parts.push(formatRes(cost.energy) + '能');
+  return parts.length ? parts.join('+') : '免费';
+}
+
+/** 统一扣款：失败给出具体原因（返回true/false） */
+function payCost(cost, lx, ly) {
+  if (cost.gold && game.gold < cost.gold) {
+    addFloatText(lx, ly, '金币不足(需' + formatRes(cost.gold) + ')', '#F44336');
+    return false;
+  }
+  if (cost.energy && game.power < cost.energy) {
+    addFloatText(lx, ly, '能量不足(需' + formatRes(cost.energy) + ')', '#F44336');
+    return false;
+  }
+  game.gold -= cost.gold || 0;
+  game.power -= cost.energy || 0;
+  return true;
+}
+
+/** 拆除返还：累计投入的25% */
+function refundOf(b) {
+  return {
+    gold: Math.floor((b.investedGold || 0) * CONFIG.REFUND_RATE),
+    energy: Math.floor((b.investedEnergy || 0) * CONFIG.REFUND_RATE),
+  };
+}
+
+function refundText(r) {
+  const parts = [];
+  if (r.gold) parts.push('+' + formatRes(r.gold) + '金');
+  if (r.energy) parts.push('+' + formatRes(r.energy) + '能');
+  return parts.length ? parts.join(' ') : '无返还';
+}
+
+/** 下一级数据（无则null） */
+function nextLevelData(b) {
+  switch (b.type) {
+    case 'bed': return b.level < CONFIG.BED_DATA.length ? CONFIG.BED_DATA[b.level] : null;
+    case 'door': return b.level < CONFIG.DOOR_DATA.length ? CONFIG.DOOR_DATA[b.level] : null;
+    case 'tower': return b.level < CONFIG.TOWER_DATA.length ? CONFIG.TOWER_DATA[b.level] : null;
+    case 'generator': return b.level < CONFIG.GENERATOR_DATA.length ? CONFIG.GENERATOR_DATA[b.level] : null;
+    case 'repair': return b.level < CONFIG.REPAIR_DATA.length ? CONFIG.REPAIR_DATA[b.level] : null;
+    default: return null;
+  }
+}
+
+function nextCostOf(b) {
+  const next = nextLevelData(b);
+  if (!next) return null;
+  return { gold: next.gold || 0, energy: next.energy || 0 };
+}
+
+/** 升级前置检查 */
+function prereqCheck(b) {
+  const next = nextLevelData(b);
+  if (!next) return { ok: true };
+  if (b.type === 'bed' && next.door) {
+    if (!game.door || game.door.level < next.door) {
+      return { ok: false, msg: '需' + next.door + '级门' };
+    }
+  }
+  if (b.type === 'tower' && next.gen) {
+    if (maxGenLevel() < next.gen) {
+      return { ok: false, msg: '需' + next.gen + '级发电机' };
+    }
+  }
+  return { ok: true };
+}
+
+/** 统一升级入口 */
+function tryUpgradeBuilding(b) {
+  if (game.state !== STATE.PLAYING) return;
+  const lx = b.col + 0.5;
+  const ly = b.row + 0.2;
+  const next = nextLevelData(b);
+  if (!next) {
+    const msg = (b.type === 'mine' || b.type === 'special') ? '该建筑不可升级' : '已满级';
+    addFloatText(lx, ly, msg, '#9E9E9E');
+    return;
+  }
+  const prereq = prereqCheck(b);
+  if (!prereq.ok) {
+    addFloatText(lx, ly, prereq.msg, '#FF9800');
+    return;
+  }
+  const cost = nextCostOf(b);
+  if (!payCost(cost, lx, ly)) return;
+  b.investedGold += cost.gold;
+  b.investedEnergy += cost.energy;
+  b.level++;
+  if (b.type === 'door') {
+    b.maxHp = CONFIG.DOOR_DATA[b.level - 1].hp;
+    b.hp = b.maxHp; // 升级回满
+  }
+  const names = { bed: '床', door: '大门', tower: '炮台', generator: '发电机', repair: '修复台' };
+  addFloatText(lx, ly - 0.4, (names[b.type] || '建筑') + '升级!', '#4CAF50');
+  addParticles(lx, ly, '#4CAF50', 6);
+  game.sfx.upgrade();
+}
+
+/** 统一拆除入口（带前置保护） */
+function tryDemolish(b) {
+  if (game.state !== STATE.PLAYING) return;
+  if (b.type === 'bed' || b.type === 'door') return;
+  const lx = b.col + 0.5;
+  const ly = b.row + 0.2;
+  if (b.type === 'generator') {
+    // 保护现有炮台的前置
+    let maxGen = 0;
+    for (const g of game.buildings) {
+      if (g.type === 'generator' && g !== b) maxGen = Math.max(maxGen, g.level);
+    }
+    let need = 0;
+    for (const t of game.buildings) {
+      if (t.type === 'tower') need = Math.max(need, genReqForTower(t.level));
+    }
+    if (need > maxGen) {
+      addFloatText(lx, ly, '有炮台依赖此发电机，无法拆除', '#F44336');
+      return;
+    }
+  }
+  const r = refundOf(b);
+  game.gold += r.gold;
+  game.power += r.energy;
+  game.buildings = game.buildings.filter((x) => x !== b);
+  if (game.grid[b.row] && game.grid[b.row][b.col] === b) game.grid[b.row][b.col] = null;
+  if (game.ui.infoPopup === b) game.ui.infoPopup = null;
+  game.ui.demolishConfirm = null;
+  addFloatText(lx, ly, '拆除 ' + refundText(r), '#FF9800');
+  game.sfx.build();
+}
+
+/** 统一建造入口 */
+function placeBuilding(type, col, row) {
+  if (game.state !== STATE.PLAYING) return false;
+  const lx = col + 0.5;
+  const ly = row + 0.5;
+  if (!game.cells.has(col + ',' + row)) {
+    addFloatText(lx, ly, '此处不可建造', '#F44336');
+    return false;
+  }
+  if (game.grid[row][col]) {
+    addFloatText(lx, ly, '位置已被占用', '#F44336');
+    return false;
+  }
+
+  let building = null;
+  let cost = { gold: 0, energy: 0 };
+  let keepSelection = true;
+
+  if (type === 'tower') {
+    cost = { gold: CONFIG.TOWER_DATA[0].gold };
+    building = new Tower(col, row);
+  } else if (type === 'generator') {
+    cost = { gold: CONFIG.GENERATOR_DATA[0].gold };
+    building = new Generator(col, row);
+  } else if (type.startsWith('mine_')) {
+    const idx = parseInt(type.split('_')[1], 10);
+    cost = { energy: CONFIG.MINE_DATA[idx].energy };
+    building = new Mine(col, row, idx);
+  } else if (type === 'repair') {
+    if (repairCount() >= CONFIG.REPAIR_LIMIT) {
+      addFloatText(lx, ly, '修复台已达上限(' + CONFIG.REPAIR_LIMIT + '台)', '#F44336');
+      return false;
+    }
+    cost = { energy: CONFIG.REPAIR_DATA[0].energy };
+    building = new RepairStation(col, row);
+  } else if (type.startsWith('special_')) {
+    const key = type.slice(8);
+    if (hasSpecial(key)) {
+      addFloatText(lx, ly, '每种特殊建筑仅限1个', '#F44336');
+      return false;
+    }
+    cost = { energy: CONFIG.SPECIALS[key].energy };
+    building = new SpecialBuilding(col, row, key);
+    keepSelection = false; // 特殊建筑放完退出放置模式
+  } else {
+    return false;
+  }
+
+  if (!payCost(cost, lx, ly)) return false;
+
+  building.investedGold = cost.gold || 0;
+  building.investedEnergy = cost.energy || 0;
+  game.buildings.push(building);
+  game.grid[row][col] = building;
+  game.sfx.build();
+  addFloatText(lx, ly - 0.3, '建造完成!', '#4CAF50');
+  addParticles(lx, ly, '#4CAF50', 8);
+  if (!keepSelection) {
+    game.ui.selectedBuildType = null;
+    game.ui.hoverCell = null;
+  }
+  return true;
 }
 
 // ========== 渲染系统 ==========
 
-/** 绘制圆角矩形 */
 function drawRoundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -878,11 +1096,9 @@ function drawRoundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** 绘制血条 */
 function drawHPBar(ctx, x, y, w, ratio, color) {
-  const h = 6 * game.scale;
-  const bg = '#333';
-  ctx.fillStyle = bg;
+  const h = Math.max(4, 5 * game.scale);
+  ctx.fillStyle = '#333';
   ctx.fillRect(x - w / 2, y, w, h);
   ctx.fillStyle = color;
   ctx.fillRect(x - w / 2, y, w * clamp(ratio, 0, 1), h);
@@ -891,16 +1107,11 @@ function drawHPBar(ctx, x, y, w, ratio, color) {
   ctx.strokeRect(x - w / 2, y, w, h);
 }
 
-/** 绘制备用图形（图片加载失败时使用） */
-function drawFallbackBuilding(ctx, type, x, y, w, h, level) {
+/** 矢量兜底图形（素材缺失时使用） */
+function drawFallbackBuilding(ctx, type, x, y, w, h, label) {
   const colors = {
-    bed: '#8D6E63',
-    door: '#795548',
-    tower: '#607D8B',
-    generator: '#FFC107',
-    mine: '#FF9800',
-    repair: '#4CAF50',
-    special: '#9C27B0',
+    bed: '#8D6E63', door: '#795548', tower: '#607D8B', generator: '#FFC107',
+    mine: '#FF9800', repair: '#4CAF50', special: '#9C27B0',
   };
   ctx.fillStyle = colors[type] || '#666';
   drawRoundRect(ctx, x - w / 2, y - h / 2, w, h, 4);
@@ -909,45 +1120,38 @@ function drawFallbackBuilding(ctx, type, x, y, w, h, level) {
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(10, Math.floor(11 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const labels = { bed: '床', door: '门', tower: '炮', generator: '电', mine: '矿', repair: '修', special: '特' };
-  ctx.fillText((labels[type] || '?') + 'Lv' + level, x, y);
+  ctx.fillText(label, x, y);
 }
 
 /** 渲染主菜单 */
 function renderMenu(ctx) {
   const W = game.W, H = game.H;
-  // 背景
-  if (game.images.ui_MENU_BG) {
-    ctx.drawImage(game.images.ui_MENU_BG, 0, 0, W, H);
+  const bg = IMG.ui_MENU_BG;
+  if (bg) {
+    ctx.drawImage(bg, 0, 0, W, H);
   } else {
-    // 备用暗色背景
     const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, '#0d0d1a');
     grad.addColorStop(1, '#1a0a2e');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
   }
-
-  // 暗色覆盖层
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(0, 0, W, H);
 
-  // 闪烁效果
   if (game.flickerAlpha > 0) {
     ctx.fillStyle = `rgba(200,200,255,${game.flickerAlpha * 0.05})`;
     ctx.fillRect(0, 0, W, H);
   }
-
-  // 幽灵影子
   if (game.ghostAlpha > 0) {
     ctx.save();
     ctx.globalAlpha = game.ghostAlpha * 0.3;
     ctx.fillStyle = '#aaa';
     ctx.beginPath();
-    ctx.arc(game.ghostX, game.ghostY, 30 * game.scale, 0, Math.PI * 2);
+    ctx.arc(game.ghostLx * W, game.ghostLy * H, 30 * game.scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -958,13 +1162,13 @@ function renderMenu(ctx) {
   ctx.shadowColor = '#ff1744';
   ctx.shadowBlur = 20;
   ctx.fillStyle = '#e0e0e0';
-  ctx.font = `bold ${Math.floor(48 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(28, Math.floor(48 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('猛鬼宿舍', W / 2, titleY);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#9e9e9e';
-  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(12, Math.floor(18 * game.scale))}px Microsoft YaHei`;
   ctx.fillText('微恐塔防', W / 2, titleY + 40 * game.scale);
   ctx.restore();
 
@@ -973,46 +1177,44 @@ function renderMenu(ctx) {
   const btnH = 60 * game.scale;
   const btnX = W / 2 - btnW / 2;
   const btnY = H * 0.55;
-  if (game.images.ui_START_BTN) {
-    ctx.drawImage(game.images.ui_START_BTN, btnX, btnY, btnW, btnH);
+  if (IMG.ui_START_BTN) {
+    ctx.drawImage(IMG.ui_START_BTN, btnX, btnY, btnW, btnH);
   } else {
     ctx.fillStyle = '#c62828';
     drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.floor(22 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `bold ${Math.max(14, Math.floor(22 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('开始游戏', W / 2, btnY + btnH / 2);
   }
-  // 记录按钮区域
   game._menuBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 
-  // 货币框
+  // 货币框（仅装饰）
   const coinFrameW = 160 * game.scale;
   const coinFrameH = 36 * game.scale;
   const coinFrameX = W / 2 - coinFrameW / 2;
   const coinFrameY = H * 0.72;
-  if (game.images.ui_COIN_FRAME) {
-    ctx.drawImage(game.images.ui_COIN_FRAME, coinFrameX, coinFrameY, coinFrameW, coinFrameH);
+  if (IMG.ui_COIN_FRAME) {
+    ctx.drawImage(IMG.ui_COIN_FRAME, coinFrameX, coinFrameY, coinFrameW, coinFrameH);
   } else {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     drawRoundRect(ctx, coinFrameX, coinFrameY, coinFrameW, coinFrameH, 6);
     ctx.fill();
   }
   ctx.fillStyle = '#FFD700';
-  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(11, Math.floor(16 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('💰 ' + formatNum(game.gold), W / 2, coinFrameY + coinFrameH / 2);
+  ctx.fillText('💰 ' + formatRes(game.gold), W / 2, coinFrameY + coinFrameH / 2);
 }
 
 /** 渲染角色选择 */
 function renderSelectChar(ctx) {
   const W = game.W, H = game.H;
-  // 背景
-  if (game.images.ui_SELECT_BG) {
-    ctx.drawImage(game.images.ui_SELECT_BG, 0, 0, W, H);
+  if (IMG.ui_SELECT_BG) {
+    ctx.drawImage(IMG.ui_SELECT_BG, 0, 0, W, H);
   } else {
     ctx.fillStyle = '#0d0d1a';
     ctx.fillRect(0, 0, W, H);
@@ -1020,13 +1222,12 @@ function renderSelectChar(ctx) {
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(0, 0, W, H);
 
-  // 标题
   ctx.fillStyle = '#e0e0e0';
-  ctx.font = `bold ${Math.floor(28 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(18, Math.floor(28 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText('选择角色', W / 2, H * 0.15);
 
-  // 角色卡片
   const cardW = 140 * game.scale;
   const cardH = 200 * game.scale;
   const gap = 40 * game.scale;
@@ -1034,40 +1235,25 @@ function renderSelectChar(ctx) {
   const startX = W / 2 - totalW / 2;
   const cardY = H * 0.3;
 
-  // 男性角色
-  const maleSelected = game.charGender === 'male';
-  ctx.fillStyle = maleSelected ? 'rgba(33,150,243,0.3)' : 'rgba(255,255,255,0.1)';
-  drawRoundRect(ctx, startX, cardY, cardW, cardH, 10);
-  ctx.fill();
-  ctx.strokeStyle = maleSelected ? '#2196F3' : '#555';
-  ctx.lineWidth = maleSelected ? 3 : 1;
-  ctx.stroke();
-  // 绘制角色图标
-  ctx.fillStyle = '#90CAF9';
-  ctx.font = `${Math.floor(60 * game.scale)}px Microsoft YaHei`;
-  ctx.textAlign = 'center';
-  ctx.fillText('🧑', startX + cardW / 2, cardY + cardH * 0.4);
-  ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
-  ctx.fillText('男性角色', startX + cardW / 2, cardY + cardH * 0.75);
+  const cards = [
+    { key: 'male', label: '男性角色', color: '#2196F3', fill: 'rgba(33,150,243,0.3)', icon: '🧑', x: startX },
+    { key: 'female', label: '女性角色', color: '#E91E63', fill: 'rgba(233,30,99,0.3)', icon: '👩', x: startX + cardW + gap },
+  ];
+  for (const c of cards) {
+    const selected = game.charGender === c.key;
+    ctx.fillStyle = selected ? c.fill : 'rgba(255,255,255,0.1)';
+    drawRoundRect(ctx, c.x, cardY, cardW, cardH, 10);
+    ctx.fill();
+    ctx.strokeStyle = selected ? c.color : '#555';
+    ctx.lineWidth = selected ? 3 : 1;
+    ctx.stroke();
+    ctx.font = `${Math.max(32, Math.floor(60 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(c.icon, c.x + cardW / 2, cardY + cardH * 0.4);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(13, Math.floor(18 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(c.label, c.x + cardW / 2, cardY + cardH * 0.75);
+  }
 
-  // 女性角色
-  const femaleX = startX + cardW + gap;
-  const femaleSelected = game.charGender === 'female';
-  ctx.fillStyle = femaleSelected ? 'rgba(233,30,99,0.3)' : 'rgba(255,255,255,0.1)';
-  drawRoundRect(ctx, femaleX, cardY, cardW, cardH, 10);
-  ctx.fill();
-  ctx.strokeStyle = femaleSelected ? '#E91E63' : '#555';
-  ctx.lineWidth = femaleSelected ? 3 : 1;
-  ctx.stroke();
-  ctx.fillStyle = '#F48FB1';
-  ctx.font = `${Math.floor(60 * game.scale)}px Microsoft YaHei`;
-  ctx.fillText('👩', femaleX + cardW / 2, cardY + cardH * 0.4);
-  ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
-  ctx.fillText('女性角色', femaleX + cardW / 2, cardY + cardH * 0.75);
-
-  // 确认按钮
   const confirmBtnW = 160 * game.scale;
   const confirmBtnH = 50 * game.scale;
   const confirmBtnX = W / 2 - confirmBtnW / 2;
@@ -1076,13 +1262,12 @@ function renderSelectChar(ctx) {
   drawRoundRect(ctx, confirmBtnX, confirmBtnY, confirmBtnW, confirmBtnH, 8);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
   ctx.fillText('确认选择', W / 2, confirmBtnY + confirmBtnH / 2);
 
-  // 记录交互区域
   game._charAreas = {
     male: { x: startX, y: cardY, w: cardW, h: cardH },
-    female: { x: femaleX, y: cardY, w: cardW, h: cardH },
+    female: { x: startX + cardW + gap, y: cardY, w: cardW, h: cardH },
     confirm: { x: confirmBtnX, y: confirmBtnY, w: confirmBtnW, h: confirmBtnH },
   };
 }
@@ -1093,14 +1278,13 @@ function renderSelectLevel(ctx) {
   ctx.fillStyle = '#0d0d1a';
   ctx.fillRect(0, 0, W, H);
 
-  // 标题
   ctx.fillStyle = '#e0e0e0';
-  ctx.font = `bold ${Math.floor(28 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(18, Math.floor(28 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText('选择关卡', W / 2, H * 0.12);
 
-  // 关卡卡片
-  const cardW = Math.min(200 * game.scale, W * 0.28);
+  const cardW = Math.min(200 * game.scale, W * 0.3);
   const cardH = 240 * game.scale;
   const gap = 20 * game.scale;
   const totalW = cardW * 3 + gap * 2;
@@ -1111,36 +1295,32 @@ function renderSelectLevel(ctx) {
   CONFIG.LEVELS.forEach((level, i) => {
     const x = startX + i * (cardW + gap);
     const selected = game.levelIndex === i;
-    // 卡片背景
     ctx.fillStyle = selected ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
     drawRoundRect(ctx, x, cardY, cardW, cardH, 10);
     ctx.fill();
     ctx.strokeStyle = selected ? level.color : '#444';
     ctx.lineWidth = selected ? 3 : 1;
     ctx.stroke();
-    // 关卡地图缩略图
-    const roomImg = game.images['room_' + i];
+
+    const roomImg = IMG['room_' + i];
     if (roomImg) {
       ctx.drawImage(roomImg, x + 10, cardY + 10, cardW - 20, cardH * 0.5);
     } else {
       ctx.fillStyle = '#222';
       ctx.fillRect(x + 10, cardY + 10, cardW - 20, cardH * 0.5);
     }
-    // 关卡名
+
     ctx.fillStyle = level.color;
-    ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
-    ctx.textAlign = 'center';
-    ctx.fillText(level.name, x + cardW / 2, cardY + cardH * 0.7);
-    // Boss预览
+    ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(level.name + ' · ' + (i === 0 ? '幽灵船' : i === 1 ? '废弃医院' : '末日堡垒'), x + cardW / 2, cardY + cardH * 0.68);
     ctx.fillStyle = '#aaa';
-    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText('Boss Lv.' + level.bossData[0].level, x + cardW / 2, cardY + cardH * 0.82);
-    ctx.fillText('HP: ' + formatNum(level.bossData[0].hp), x + cardW / 2, cardY + cardH * 0.9);
+    ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(level.bossName + ' Lv.' + level.bossData[0].level, x + cardW / 2, cardY + cardH * 0.8);
+    ctx.fillText('可建塔位: ' + level.cells.length + '个', x + cardW / 2, cardY + cardH * 0.9);
 
     game._levelAreas.push({ x, y: cardY, w: cardW, h: cardH, index: i });
   });
 
-  // 开始按钮
   const btnW = 180 * game.scale;
   const btnH = 50 * game.scale;
   const btnX = W / 2 - btnW / 2;
@@ -1149,9 +1329,7 @@ function renderSelectLevel(ctx) {
   drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
   ctx.fillText('进入战斗', btnX + btnW / 2, btnY + btnH / 2);
   game._levelStartBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
@@ -1160,8 +1338,8 @@ function renderSelectLevel(ctx) {
 function renderPlaying(ctx) {
   const W = game.W, H = game.H;
   const area = getGameArea();
+  const s = cellSize();
 
-  // 屏幕震动偏移
   let shakeX = 0, shakeY = 0;
   if (game.shakeTimer > 0) {
     shakeX = (Math.random() - 0.5) * game.shakeAmount * 2;
@@ -1171,19 +1349,17 @@ function renderPlaying(ctx) {
   ctx.translate(shakeX, shakeY);
 
   // 房间背景
-  const roomImg = game.images['room_' + game.levelIndex];
+  const roomImg = IMG['room_' + game.levelIndex];
   if (roomImg) {
     ctx.drawImage(roomImg, area.areaX, area.areaY, area.areaW, area.areaH);
   } else {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
   }
-
-  // 暗色覆盖营造氛围
   ctx.fillStyle = 'rgba(0,0,10,0.35)';
   ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
 
-  // 微弱灯光效果
+  // 微弱灯光
   const lightX = area.areaX + area.areaW * 0.5;
   const lightY = area.areaY + area.areaH * 0.3;
   const lightR = 200 * game.scale;
@@ -1193,420 +1369,355 @@ function renderPlaying(ctx) {
   ctx.fillStyle = lightGrad;
   ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
 
-  // 闪烁效果
   if (game.flickerAlpha > 0) {
     ctx.fillStyle = `rgba(200,200,255,${game.flickerAlpha * 0.03})`;
     ctx.fillRect(area.areaX, area.areaY, area.areaW, area.areaH);
   }
 
-  // 绘制网格线
-  const cellW = area.areaW / CONFIG.GRID_COLS;
-  const cellH = area.areaH / CONFIG.GRID_ROWS;
+  // 网格线
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
   for (let c = 0; c <= CONFIG.GRID_COLS; c++) {
     ctx.beginPath();
-    ctx.moveTo(area.areaX + c * cellW, area.areaY);
-    ctx.lineTo(area.areaX + c * cellW, area.areaY + area.areaH);
+    ctx.moveTo(area.areaX + c * s.cw, area.areaY);
+    ctx.lineTo(area.areaX + c * s.cw, area.areaY + area.areaH);
     ctx.stroke();
   }
   for (let r = 0; r <= CONFIG.GRID_ROWS; r++) {
     ctx.beginPath();
-    ctx.moveTo(area.areaX, area.areaY + r * cellH);
-    ctx.lineTo(area.areaX + area.areaW, area.areaY + r * cellH);
+    ctx.moveTo(area.areaX, area.areaY + r * s.ch);
+    ctx.lineTo(area.areaX + area.areaW, area.areaY + r * s.ch);
     ctx.stroke();
   }
 
-  // 高亮可放置格子
-  if (game.ui.selectedBuildType && game.ui.selectedCell) {
-    const { col, row } = game.ui.selectedCell;
-    if (canPlaceAt(col, row)) {
-      ctx.fillStyle = 'rgba(76,175,80,0.3)';
-    } else {
-      ctx.fillStyle = 'rgba(244,67,54,0.3)';
+  // 建造模式：高亮可建造格 + 悬停预览
+  if (game.ui.selectedBuildType) {
+    for (const key of game.cells) {
+      const [c, r] = key.split(',').map(Number);
+      const empty = !game.grid[r][c];
+      ctx.fillStyle = empty ? 'rgba(76,175,80,0.18)' : 'rgba(244,67,54,0.15)';
+      ctx.fillRect(area.areaX + c * s.cw, area.areaY + r * s.ch, s.cw, s.ch);
     }
-    ctx.fillRect(area.areaX + col * cellW, area.areaY + row * cellH, cellW, cellH);
+    if (game.ui.hoverCell) {
+      const { col, row } = game.ui.hoverCell;
+      const ok = canPlaceAt(col, row);
+      ctx.fillStyle = ok ? 'rgba(76,175,80,0.4)' : 'rgba(244,67,54,0.4)';
+      ctx.fillRect(area.areaX + col * s.cw, area.areaY + row * s.ch, s.cw, s.ch);
+    }
   }
 
-  // 绘制门
-  renderDoor(ctx, cellW, cellH);
+  // 门
+  renderDoor(ctx, s);
+  // 建筑
+  for (const b of game.buildings) renderBuilding(ctx, b, s);
+  // 玩家
+  renderPlayer(ctx, s);
+  // Boss
+  for (const boss of game.bosses) renderBoss(ctx, boss);
 
-  // 绘制建筑
-  for (const b of game.buildings) {
-    renderBuilding(ctx, b, cellW, cellH);
-  }
-
-  // 绘制玩家
-  renderPlayer(ctx, cellW, cellH);
-
-  // 绘制Boss
-  for (const boss of game.bosses) {
-    renderBoss(ctx, boss);
-  }
-
-  // 绘制弹道
+  // 弹道
   for (const p of game.projectiles) {
-    if (!p.dead) {
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3 * game.scale, 0, Math.PI * 2);
-      ctx.fill();
-      // 弹道尾迹
-      ctx.fillStyle = 'rgba(255,215,0,0.3)';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 6 * game.scale, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    if (p.dead) continue;
+    const pt = w2s(p.lx, p.ly);
+    ctx.fillStyle = 'rgba(255,215,0,0.3)';
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, Math.max(3, 5 * game.scale), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, Math.max(2, 3 * game.scale), 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // 绘制炮台攻击范围（选中时）
+  // 炮台攻击范围（弹窗打开时）
   for (const b of game.buildings) {
     if (b.type === 'tower' && game.ui.infoPopup === b) {
+      const c = w2s(b.col + 0.5, b.row + 0.5);
       ctx.strokeStyle = 'rgba(255,255,255,0.2)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.range, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, b.rangeCells * s.cw, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
 
-  // 绘制飘字
+  // 飘字
   for (const ft of game.floatTexts) {
-    if (ft.life > 0) {
-      ctx.save();
-      ctx.globalAlpha = clamp(ft.life, 0, 1);
-      ctx.fillStyle = ft.color;
-      ctx.font = `bold ${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-      ctx.textAlign = 'center';
-      ctx.fillText(ft.text, ft.x, ft.y);
-      ctx.restore();
-    }
+    if (ft.life <= 0) continue;
+    const pt = w2s(ft.lx, ft.ly);
+    ctx.save();
+    ctx.globalAlpha = clamp(ft.life, 0, 1);
+    ctx.fillStyle = ft.color;
+    ctx.font = `bold ${Math.max(11, Math.floor(14 * game.scale))}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ft.text, pt.x, pt.y);
+    ctx.restore();
   }
 
-  // 绘制粒子
+  // 粒子
   for (const p of game.particles) {
-    if (p.life > 0) {
-      ctx.save();
-      ctx.globalAlpha = clamp(p.life, 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * game.scale, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+    if (p.life <= 0) continue;
+    const pt = w2s(p.lx, p.ly);
+    ctx.save();
+    ctx.globalAlpha = clamp(p.life, 0, 1);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, p.size * game.scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   // 幽灵影子
   if (game.ghostAlpha > 0) {
+    const pt = w2s(game.ghostLx, game.ghostLy);
     ctx.save();
     ctx.globalAlpha = game.ghostAlpha * 0.15;
     ctx.fillStyle = '#ccc';
     ctx.beginPath();
-    ctx.ellipse(game.ghostX, game.ghostY, 20 * game.scale, 30 * game.scale, 0, 0, Math.PI * 2);
+    ctx.ellipse(pt.x, pt.y, 20 * game.scale, 30 * game.scale, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
   ctx.restore(); // 结束震动偏移
 
-  // 顶部资源栏
   renderTopBar(ctx);
-
-  // 底部建造面板
   renderBuildPanel(ctx);
 
-  // 暂停按钮
-  renderPauseBtn(ctx);
+  if (game.ui.infoPopup) renderInfoPopup(ctx);
+  if (game.ui.shopOpen) renderShopPopup(ctx);
 
-  // 信息弹窗
-  if (game.ui.infoPopup) {
-    renderInfoPopup(ctx);
-  }
-
-  // 商店弹窗
-  if (game.ui.shopOpen) {
-    renderShopPopup(ctx);
-  }
-
-  // 准备时间提示
-  if (game.gameTime < CONFIG.PREPARE_TIME) {
-    const remaining = Math.ceil(CONFIG.PREPARE_TIME - game.gameTime);
+  // 首只Boss倒计时
+  if (game.gameTime < CONFIG.FIRST_BOSS_TIME) {
+    const remaining = Math.ceil(CONFIG.FIRST_BOSS_TIME - game.gameTime);
+    const bw = 200 * game.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(W / 2 - 100 * game.scale, H * 0.45, 200 * game.scale, 40 * game.scale);
+    ctx.fillRect(W / 2 - bw / 2, H * 0.45, bw, 40 * game.scale);
     ctx.fillStyle = '#FFD700';
-    ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`Boss来袭: ${remaining}s`, W / 2, H * 0.45 + 20 * game.scale);
-  }
-
-  // 胜利条件提示（游戏前60秒显示）
-  if (game.gameTime < 60 && game.gameTime >= CONFIG.PREPARE_TIME) {
+    ctx.fillText(`猛鬼来袭: ${remaining}s`, W / 2, H * 0.45 + 20 * game.scale);
+  } else if (game.gameTime < 75) {
+    // 胜利条件提示
+    const bw = 280 * game.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(W / 2 - 140 * game.scale, H * 0.45, 280 * game.scale, 30 * game.scale);
+    ctx.fillRect(W / 2 - bw / 2, H * 0.45, bw, 30 * game.scale);
     ctx.fillStyle = '#FFD700';
-    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `${Math.max(10, Math.floor(12 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('提示：击杀撤退中的Boss即可获胜！', W / 2, H * 0.45 + 15 * game.scale);
+    ctx.fillText('提示：击杀任意猛鬼即可获胜！', W / 2, H * 0.45 + 15 * game.scale);
   }
 }
 
 /** 渲染门 */
-function renderDoor(ctx, cellW, cellH) {
+function renderDoor(ctx, s) {
   const door = game.door;
   if (!door) return;
-  const x = gridToX(door.col);
-  const y = gridToY(door.row);
-  const w = cellW * 0.8;
-  const h = cellH * 0.85;
-
-  // 门图片或备用图形
-  const doorLevel = Math.min(door.level, 13);
-  const doorImgKey = 'door_' + doorLevel;
-  if (!game.images[doorImgKey]) {
-    // 尝试加载门图片（延迟加载）
-    const src = `微恐塔防素材/门/透视版/${doorLevel}.png`;
-    loadImage(src).then(img => { game.images[doorImgKey] = img; });
-  }
-  if (game.images[doorImgKey]) {
-    ctx.drawImage(game.images[doorImgKey], x - w / 2, y - h / 2, w, h);
+  const pt = w2s(door.col + 0.5, door.row + 0.5);
+  const w = s.cw * 0.8;
+  const h = s.ch * 0.85;
+  const doorImg = IMG['door_' + door.level];
+  if (doorImg) {
+    ctx.drawImage(doorImg, pt.x - w / 2, pt.y - h / 2, w, h);
   } else {
-    drawFallbackBuilding(ctx, 'door', x, y, w, h, door.level);
+    drawFallbackBuilding(ctx, 'door', pt.x, pt.y, w, h, '门Lv' + door.level);
   }
-
-  // 无敌护罩效果
   if (door.invincible) {
     ctx.save();
     ctx.strokeStyle = 'rgba(0,188,212,0.6)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(w, h) * 0.6, 0, Math.PI * 2);
+    ctx.arc(pt.x, pt.y, Math.max(w, h) * 0.6, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
-
-  // 血条
-  drawHPBar(ctx, x, y - h / 2 - 10 * game.scale, w, door.hp / door.maxHp, '#4CAF50');
+  drawHPBar(ctx, pt.x, pt.y - h / 2 - 10 * game.scale, w, door.hp / door.maxHp, '#4CAF50');
 }
 
 /** 渲染建筑 */
-function renderBuilding(ctx, b, cellW, cellH) {
-  const x = b.x;
-  const y = b.y;
-  const w = cellW * 0.75;
-  const h = cellH * 0.75;
+function renderBuilding(ctx, b, s) {
+  const pt = w2s(b.col + 0.5, b.row + 0.5);
+  const w = s.cw * 0.75;
+  const h = s.ch * 0.75;
+  const labelFont = Math.max(9, Math.floor(10 * game.scale));
 
   switch (b.type) {
     case 'bed': {
-      const bedImgKey = 'bed_' + b.level;
-      if (!game.images[bedImgKey]) {
-        const src = `微恐塔防素材/床/微恐床/${b.level === 1 ? '1级床' : b.level}.png`;
-        loadImage(src).then(img => { game.images[bedImgKey] = img; });
-      }
-      if (game.images[bedImgKey]) {
-        ctx.drawImage(game.images[bedImgKey], x - w / 2, y - h / 2, w, h);
+      const bedImg = IMG['bed_' + b.level];
+      if (bedImg) {
+        ctx.drawImage(bedImg, pt.x - w / 2, pt.y - h / 2, w, h);
       } else {
-        drawFallbackBuilding(ctx, 'bed', x, y, w, h, b.level);
+        drawFallbackBuilding(ctx, 'bed', pt.x, pt.y, w, h, '床Lv' + b.level);
       }
-      // 产出指示
       ctx.fillStyle = '#FFD700';
-      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.font = `${labelFont}px Microsoft YaHei`;
       ctx.textAlign = 'center';
-      ctx.fillText('+' + b.income + '/s', x, y + h / 2 + 12 * game.scale);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+' + b.income + '/s', pt.x, pt.y + h / 2 + 12 * game.scale);
       break;
     }
     case 'tower': {
-      const towerIdx = (game.animFrame + b.level) % 12;
-      const towerImgKey = 'tower_' + towerIdx;
-      if (!game.images[towerImgKey]) {
-        const src = `微恐塔防素材/炮台/简易版/炮台简易版_${towerIdx}.png`;
-        loadImage(src).then(img => { game.images[towerImgKey] = img; });
-      }
-      if (game.images[towerImgKey]) {
+      const towerImg = IMG['tower_' + b.level]; // 等级外观，稳定显示
+      if (towerImg) {
         ctx.save();
-        ctx.translate(x, y);
+        ctx.translate(pt.x, pt.y);
         ctx.rotate(b.angle);
-        ctx.drawImage(game.images[towerImgKey], -w / 2, -h / 2, w, h);
+        ctx.drawImage(towerImg, -w / 2, -h / 2, w, h);
         ctx.restore();
       } else {
-        drawFallbackBuilding(ctx, 'tower', x, y, w, h, b.level);
+        drawFallbackBuilding(ctx, 'tower', pt.x, pt.y, w, h, '炮Lv' + b.level);
       }
       break;
     }
     case 'generator': {
-      const genIdx = (b.level - 1) % 4;
-      const genImgKey = 'gen_' + genIdx;
-      if (!game.images[genImgKey]) {
-        const src = `微恐塔防素材/发电机/发电机_${[0, 2, 3, 6][genIdx]}.png`;
-        loadImage(src).then(img => { game.images[genImgKey] = img; });
-      }
-      if (game.images[genImgKey]) {
-        ctx.drawImage(game.images[genImgKey], x - w / 2, y - h / 2, w, h);
+      const genImg = IMG['gen_' + b.level];
+      if (genImg) {
+        ctx.drawImage(genImg, pt.x - w / 2, pt.y - h / 2, w, h);
       } else {
-        drawFallbackBuilding(ctx, 'generator', x, y, w, h, b.level);
+        drawFallbackBuilding(ctx, 'generator', pt.x, pt.y, w, h, '电Lv' + b.level);
       }
       ctx.fillStyle = '#FFC107';
-      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.font = `${labelFont}px Microsoft YaHei`;
       ctx.textAlign = 'center';
-      ctx.fillText('+' + b.output + '电/s', x, y + h / 2 + 12 * game.scale);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+' + formatRes(b.output) + '电/s', pt.x, pt.y + h / 2 + 12 * game.scale);
       break;
     }
     case 'mine': {
-      drawFallbackBuilding(ctx, 'mine', x, y, w, h, b.mineIndex + 1);
+      drawFallbackBuilding(ctx, 'mine', pt.x, pt.y, w, h, b.mineName);
       ctx.fillStyle = '#FF9800';
-      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+      ctx.font = `${labelFont}px Microsoft YaHei`;
       ctx.textAlign = 'center';
-      ctx.fillText(CONFIG.MINE_DATA[b.mineIndex].type, x, y - 6 * game.scale);
-      ctx.fillText('+' + b.income + '金/s', x, y + 8 * game.scale);
-      ctx.fillStyle = '#FF5722';
-      ctx.fillText('-' + b.powerCost + '电/s', x, y + h / 2 + 12 * game.scale);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+' + b.income + '金/s', pt.x, pt.y + h / 2 + 12 * game.scale);
       break;
     }
     case 'repair': {
-      const repairImgKey = 'repair_0';
-      if (!game.images[repairImgKey]) {
-        const src = '微恐塔防素材/修复台/修复台_0.png';
-        loadImage(src).then(img => { game.images[repairImgKey] = img; });
-      }
-      if (game.images[repairImgKey]) {
-        ctx.drawImage(game.images[repairImgKey], x - w / 2, y - h / 2, w, h);
+      const repairImg = IMG['repair_' + b.level];
+      if (repairImg) {
+        ctx.drawImage(repairImg, pt.x - w / 2, pt.y - h / 2, w, h);
       } else {
-        drawFallbackBuilding(ctx, 'repair', x, y, w, h, 1);
+        drawFallbackBuilding(ctx, 'repair', pt.x, pt.y, w, h, '修Lv' + b.level);
       }
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = `${labelFont}px Microsoft YaHei`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.pct + '%/s', pt.x, pt.y + h / 2 + 12 * game.scale);
       break;
     }
     case 'special': {
-      drawFallbackBuilding(ctx, 'special', x, y, w, h, 1);
-      ctx.fillStyle = '#CE93D8';
-      ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
-      ctx.textAlign = 'center';
-      const spData = CONFIG.SPECIAL_BUILDINGS[b.specialKey];
-      if (spData) ctx.fillText(spData.name, x, y + h / 2 + 12 * game.scale);
+      drawFallbackBuilding(ctx, 'special', pt.x, pt.y, w, h, b.specialName);
       break;
     }
   }
 }
 
 /** 渲染玩家 */
-function renderPlayer(ctx, cellW, cellH) {
+function renderPlayer(ctx, s) {
   if (!game.player) return;
   const p = game.player;
-  const x = gridToX(p.col);
-  const y = gridToY(p.row);
-  const w = cellW * 0.6;
-  const h = cellH * 0.8;
+  const pt = w2s(p.col + 0.5, p.row + 0.5);
+  const w = s.cw * 0.6;
+  const h = s.ch * 0.8;
+  const isMale = game.charGender === 'male';
+  const frames = isMale ? [0, 1, 2, 4, 5, 7] : [0, 1, 2, 3, 4, 5];
+  const frame = frames[Math.floor(game.animTimer * 4) % frames.length];
+  const stateKey = p.inBed ? 'sleep' : 'stand';
+  const imgKey = `player_${isMale ? 'm' : 'f'}_${stateKey}_${frame}`;
+  const img = IMG[imgKey];
 
   if (p.inBed) {
-    // 睡觉动画 - Zzz
-    ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-    ctx.textAlign = 'center';
     const zOffset = Math.sin(game.gameTime * 3) * 5;
-    ctx.fillText('💤', x + 15 * game.scale, y - h / 2 + zOffset);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(11, Math.floor(14 * game.scale))}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💤', pt.x + 15 * game.scale, pt.y - h / 2 + zOffset);
   }
 
-  // 角色图片
-  const isMale = game.charGender === 'male';
-  const state = p.inBed ? 'sleep' : 'stand';
-  const frameIdx = Math.floor(game.animFrame) % 6;
-  const imgKey = `player_${isMale ? 'm' : 'f'}_${state}_${frameIdx}`;
-  if (!game.images[imgKey]) {
-    const gender = isMale ? '男性角色' : '女性角色';
-    const prefix = p.inBed ? '睡觉' : '站立';
-    const suffix = isMale ? '男玩家' : '女玩家';
-    const src = `微恐塔防素材/玩家/${gender}/${prefix}-${suffix}_${frameIdx}.png`;
-    loadImage(src).then(img => { game.images[imgKey] = img; });
-  }
-  if (game.images[imgKey]) {
-    ctx.drawImage(game.images[imgKey], x - w / 2, y - h / 2, w, h);
+  if (img) {
+    ctx.drawImage(img, pt.x - w / 2, pt.y - h / 2, w, h);
   } else {
-    // 备用：简单圆形
     ctx.fillStyle = isMale ? '#64B5F6' : '#F48FB1';
     ctx.beginPath();
-    ctx.arc(x, y, w * 0.4, 0, Math.PI * 2);
+    ctx.arc(pt.x, pt.y, w * 0.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `${Math.max(10, Math.floor(12 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
-    ctx.fillText(isMale ? '🧑' : '👩', x, y + 4);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(isMale ? '🧑' : '👩', pt.x, pt.y);
   }
 }
 
 /** 渲染Boss */
 function renderBoss(ctx, boss) {
   if (boss.dead) return;
-  const x = boss.x;
-  const y = boss.y;
-  const size = 50 * game.scale;
-
-  // Boss图片
-  const isAttacking = boss.isAttacking && boss.atkAnimTimer % 0.6 < 0.3;
+  const pt = w2s(boss.lx, boss.ly);
+  const size = Math.max(30, 52 * game.scale);
   const isBig = boss.level >= 4;
-  const frameIdx = Math.floor(boss.animTimer * 3) % 3;
-  const imgKey = `boss_${isBig ? 'big' : 'small'}_${isAttacking ? 'atk' : 'idle'}_${frameIdx}`;
-  if (!game.images[imgKey]) {
-    const prefix = isBig ? 'boss大' : '小boss';
-    const suffix = isAttacking ? '攻击' : '';
-    const src = `微恐塔防素材/boss/${prefix}${suffix}_${frameIdx}.png`;
-    loadImage(src).then(img => { game.images[imgKey] = img; });
-  }
-  if (game.images[imgKey]) {
-    ctx.drawImage(game.images[imgKey], x - size, y - size, size * 2, size * 2);
+  const isAttacking = boss.isAttacking && (boss.atkAnimTimer % 0.6 < 0.3);
+  const frame = Math.floor(boss.animTimer * 3) % 3;
+  const imgKey = `boss_${isBig ? 'big' : 'small'}_${isAttacking ? 'atk' : 'idle'}_${frame}`;
+  const img = IMG[imgKey];
+
+  if (img) {
+    ctx.drawImage(img, pt.x - size, pt.y - size, size * 2, size * 2);
   } else {
-    // 备用：恐怖红色圆形
-    ctx.fillStyle = boss.retreating ? '#FF5722' : '#c62828';
+    ctx.fillStyle = boss.state === 'retreat' ? '#FF5722' : '#c62828';
     ctx.beginPath();
-    ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+    ctx.arc(pt.x, pt.y, size * 0.6, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `${Math.max(12, Math.floor(16 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
-    ctx.fillText('👻', x, y + 5);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👻', pt.x, pt.y);
   }
 
-  // 定身效果
   if (boss.stunTimer > 0) {
     ctx.strokeStyle = '#9C27B0';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(x, y, size * 0.7, 0, Math.PI * 2);
+    ctx.arc(pt.x, pt.y, size * 0.7, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // 撤退指示
-  if (boss.retreating) {
+  const infoY = pt.y - size - 15 * game.scale;
+  if (boss.state === 'retreat') {
     ctx.fillStyle = '#FF9800';
-    ctx.font = `bold ${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `bold ${Math.max(10, Math.floor(12 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
-    ctx.fillText('撤退中!', x, y - size - 15 * game.scale);
-  }
-
-  // 回血指示
-  if (boss.healing) {
+    ctx.textBaseline = 'middle';
+    ctx.fillText('撤退中!', pt.x, infoY + 14 * game.scale);
+  } else if (boss.state === 'heal') {
     ctx.fillStyle = '#4CAF50';
-    ctx.font = `bold ${Math.floor(12 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `bold ${Math.max(10, Math.floor(12 * game.scale))}px Microsoft YaHei`;
     ctx.textAlign = 'center';
-    ctx.fillText('回血中...', x, y - size - 15 * game.scale);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('回血中 ' + Math.ceil(boss.healTimer) + 's', pt.x, infoY + 14 * game.scale);
   }
 
-  // 血条
   const hpRatio = boss.hp / boss.maxHp;
   const hpColor = hpRatio > 0.5 ? '#F44336' : (hpRatio > 0.3 ? '#FF9800' : '#FFEB3B');
-  drawHPBar(ctx, x, y - size - 8 * game.scale, size * 1.5, hpRatio, hpColor);
+  drawHPBar(ctx, pt.x, pt.y - size - 8 * game.scale, size * 1.5, hpRatio, hpColor);
 
-  // 等级显示
   ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(9, Math.floor(10 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
-  ctx.fillText('Lv.' + boss.level, x, y - size - 14 * game.scale);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Lv.' + boss.level, pt.x, infoY);
 }
 
 /** 渲染顶部资源栏 */
 function renderTopBar(ctx) {
   const W = game.W;
-  const barH = 44 * game.scale;
-  // 半透明背景
+  const area = getGameArea();
+  const barH = area.topBar;
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0, 0, W, barH);
   ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -1617,18 +1728,18 @@ function renderTopBar(ctx) {
   ctx.stroke();
 
   const y = barH / 2;
+  const fontSize = Math.max(12, Math.floor(15 * game.scale));
   ctx.textBaseline = 'middle';
-  const fontSize = Math.floor(16 * game.scale);
+  ctx.font = `${fontSize}px Microsoft YaHei`;
 
   // 金币
   ctx.fillStyle = '#FFD700';
-  ctx.font = `${fontSize}px Microsoft YaHei`;
   ctx.textAlign = 'left';
-  ctx.fillText('💰 ' + formatNum(game.gold), 15 * game.scale, y);
+  ctx.fillText('💰 ' + formatRes(game.gold), 12, y);
 
-  // 电力
+  // 能量
   ctx.fillStyle = '#00BCD4';
-  ctx.fillText('⚡ ' + formatNum(game.power), 150 * game.scale, y);
+  ctx.fillText('⚡ ' + formatRes(game.power), 14 + fontSize * 5.2, y);
 
   // 时间
   ctx.fillStyle = '#aaa';
@@ -1637,25 +1748,51 @@ function renderTopBar(ctx) {
   const secs = Math.floor(game.gameTime % 60);
   ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, W / 2, y);
 
-  // Boss数量
-  const aliveBosses = game.bosses.filter(b => !b.dead).length;
-  if (aliveBosses > 0) {
+  // Boss倒计时与存活数
+  ctx.textAlign = 'right';
+  let rightX = W - 96;
+  if (game.gameTime >= CONFIG.FIRST_BOSS_TIME) {
     ctx.fillStyle = '#F44336';
-    ctx.textAlign = 'right';
-    ctx.fillText('👻 x' + aliveBosses, W - 15 * game.scale, y);
+    ctx.fillText('👻' + Math.ceil(game.bossSpawnTimer) + 's', rightX, y);
+    rightX -= fontSize * 4;
   }
+  const alive = game.bosses.filter((b) => !b.dead).length;
+  if (alive > 0) {
+    ctx.fillStyle = '#FF9800';
+    ctx.fillText('x' + alive, rightX, y);
+  }
+
+  // 静音按钮
+  const btnSize = Math.min(34, barH - 8);
+  const muteX = W - btnSize - 8;
+  const muteY = (barH - btnSize) / 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  drawRoundRect(ctx, muteX, muteY, btnSize, btnSize, 6);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.floor(btnSize * 0.55)}px Microsoft YaHei`;
+  ctx.textAlign = 'center';
+  ctx.fillText(game.muted ? '🔇' : '🔊', muteX + btnSize / 2, muteY + btnSize / 2);
+  game._muteBtn = { x: muteX, y: muteY, w: btnSize, h: btnSize };
+
+  // 暂停按钮
+  const pauseX = muteX - btnSize - 8;
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  drawRoundRect(ctx, pauseX, muteY, btnSize, btnSize, 6);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('⏸', pauseX + btnSize / 2, muteY + btnSize / 2);
+  game._pauseBtn = { x: pauseX, y: muteY, w: btnSize, h: btnSize };
 }
 
-/** 渲染底部建造面板 */
+/** 渲染底部建造面板（窄屏两行，热区≥44px） */
 function renderBuildPanel(ctx) {
-  const W = game.W, H = game.H;
-  const area = getGameArea();
-  const panelY = H - area.bottomBar;
-  const panelH = area.bottomBar;
+  const W = game.W;
+  const layout = buildPanelLayout();
+  const panelY = game.H - layout.panelH - 6;
 
-  // 面板背景
   ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  ctx.fillRect(0, panelY, W, panelH);
+  ctx.fillRect(0, panelY, W, layout.panelH);
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -1663,84 +1800,81 @@ function renderBuildPanel(ctx) {
   ctx.lineTo(W, panelY);
   ctx.stroke();
 
-  // 建造按钮列表
-  const btnW = 70 * game.scale;
-  const btnH = 70 * game.scale;
-  const gap = 8 * game.scale;
   const items = [
-    { type: 'tower', label: '炮台', cost: CONFIG.TOWER_DATA[0].cost + '金', color: '#607D8B' },
-    { type: 'generator', label: '发电机', cost: CONFIG.GENERATOR_DATA[0].cost + '金', color: '#FFC107' },
-    { type: 'mine_0', label: '铁矿', cost: CONFIG.MINE_DATA[0].cost + '金', color: '#FF9800' },
-    { type: 'mine_1', label: '铜矿', cost: CONFIG.MINE_DATA[1].cost + '金', color: '#FF9800' },
-    { type: 'mine_2', label: '银矿', cost: CONFIG.MINE_DATA[2].cost + '金', color: '#FF9800' },
-    { type: 'mine_3', label: '金矿', cost: CONFIG.MINE_DATA[3].cost + '金', color: '#FF9800' },
-    { type: 'repair', label: '修复台', cost: CONFIG.REPAIR_COST + '电', color: '#4CAF50' },
-    { type: 'shop', label: '特殊', cost: '电力', color: '#9C27B0' },
+    { type: 'tower', label: '炮台', sub: formatRes(CONFIG.TOWER_DATA[0].gold) + '金', color: '#607D8B', cost: { gold: CONFIG.TOWER_DATA[0].gold } },
+    { type: 'generator', label: '发电机', sub: formatRes(CONFIG.GENERATOR_DATA[0].gold) + '金', color: '#FFC107', cost: { gold: CONFIG.GENERATOR_DATA[0].gold } },
+    { type: 'mine_0', label: '铜矿', sub: formatRes(CONFIG.MINE_DATA[0].energy) + '能', color: '#FF9800', cost: { energy: CONFIG.MINE_DATA[0].energy } },
+    { type: 'mine_1', label: '银矿', sub: formatRes(CONFIG.MINE_DATA[1].energy) + '能', color: '#FF9800', cost: { energy: CONFIG.MINE_DATA[1].energy } },
+    { type: 'mine_2', label: '金矿', sub: formatRes(CONFIG.MINE_DATA[2].energy) + '能', color: '#FF9800', cost: { energy: CONFIG.MINE_DATA[2].energy } },
+    { type: 'mine_3', label: '钻石矿', sub: formatRes(CONFIG.MINE_DATA[3].energy) + '能', color: '#FF9800', cost: { energy: CONFIG.MINE_DATA[3].energy } },
+    { type: 'repair', label: '修复台', sub: formatRes(CONFIG.REPAIR_DATA[0].energy) + '能', color: '#4CAF50', cost: { energy: CONFIG.REPAIR_DATA[0].energy } },
+    { type: 'shop', label: '特殊', sub: '电力', color: '#9C27B0', cost: null },
   ];
 
-  const totalW = items.length * (btnW + gap) - gap;
-  const startX = Math.max(10 * game.scale, (W - totalW) / 2);
-  const btnY = panelY + (panelH - btnH) / 2 - 5 * game.scale;
-
   game._buildBtns = [];
+  const labelFont = Math.max(10, Math.floor(13 * game.scale));
+  const subFont = Math.max(9, Math.floor(10 * game.scale));
   items.forEach((item, i) => {
-    const x = startX + i * (btnW + gap);
+    const col = i % layout.cols;
+    const row = Math.floor(i / layout.cols);
+    const x = layout.gap + col * (layout.btnW + layout.gap);
+    const y = panelY + layout.gap + 2 + row * (layout.btnH + layout.gap);
     const isSelected = game.ui.selectedBuildType === item.type;
 
-    // 按钮背景
-    ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)';
-    drawRoundRect(ctx, x, btnY, btnW, btnH, 6);
+    const affordable = !item.cost || ((item.cost.gold || 0) <= game.gold && (item.cost.energy || 0) <= game.power);
+    ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.05)';
+    drawRoundRect(ctx, x, y, layout.btnW, layout.btnH, 6);
     ctx.fill();
     ctx.strokeStyle = isSelected ? '#fff' : item.color;
     ctx.lineWidth = isSelected ? 2 : 1;
+    if (!affordable) ctx.globalAlpha = 0.55;
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // 图标和文字
     ctx.fillStyle = item.color;
-    ctx.font = `bold ${Math.floor(13 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `bold ${labelFont}px Microsoft YaHei`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(item.label, x + btnW / 2, btnY + btnH * 0.35);
-    ctx.fillStyle = '#aaa';
-    ctx.font = `${Math.floor(10 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText(item.cost, x + btnW / 2, btnY + btnH * 0.7);
+    ctx.fillText(item.label, x + layout.btnW / 2, y + layout.btnH * 0.35);
+    ctx.fillStyle = affordable ? '#aaa' : '#F44336';
+    ctx.font = `${subFont}px Microsoft YaHei`;
+    ctx.fillText(item.sub, x + layout.btnW / 2, y + layout.btnH * 0.7);
 
-    game._buildBtns.push({ x, y: btnY, w: btnW, h: btnH, type: item.type });
+    game._buildBtns.push({ x, y, w: layout.btnW, h: layout.btnH, type: item.type });
   });
+
+  // 提前出怪按钮（倒计时>3秒时可用）
+  if (game.gameTime >= 0 && game.bossSpawnTimer > 3) {
+    const bw = Math.min(120 * game.scale, 130);
+    const bh = Math.max(28, 30 * game.scale);
+    const bx = W - bw - 10;
+    const by = panelY - bh - 8;
+    ctx.fillStyle = 'rgba(198,40,40,0.85)';
+    drawRoundRect(ctx, bx, by, bw, bh, bh / 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⏩提前出怪', bx + bw / 2, by + bh / 2);
+    game._earlyBtn = { x: bx, y: by, w: bw, h: bh };
+  } else {
+    game._earlyBtn = null;
+  }
 }
 
-/** 渲染暂停按钮 */
-function renderPauseBtn(ctx) {
-  const W = game.W;
-  const size = 36 * game.scale;
-  const x = W - size - 10 * game.scale;
-  const y = 54 * game.scale;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  drawRoundRect(ctx, x, y, size, size, 6);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(18 * game.scale)}px Microsoft YaHei`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('⏸', x + size / 2, y + size / 2);
-
-  game._pauseBtn = { x, y, w: size, h: size };
-}
-
-/** 渲染建筑信息弹窗 */
+/** 渲染建筑信息弹窗（床支持上下床+升级） */
 function renderInfoPopup(ctx) {
   const b = game.ui.infoPopup;
   if (!b) return;
   const W = game.W, H = game.H;
 
-  // 半透明遮罩
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(0, 0, W, H);
 
-  // 弹窗
-  const popW = 260 * game.scale;
-  const popH = 200 * game.scale;
+  const isBed = b.type === 'bed';
+  const popW = Math.min(320 * game.scale, W * 0.94);
+  const popH = (isBed ? 268 : 224) * Math.max(0.9, game.scale);
   const popX = W / 2 - popW / 2;
   const popY = H / 2 - popH / 2;
 
@@ -1751,69 +1885,120 @@ function renderInfoPopup(ctx) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // 内容
   const cx = W / 2;
-  let ty = popY + 25 * game.scale;
+  let ty = popY + 24 * game.scale;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  // 标题
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(18 * game.scale)}px Microsoft YaHei`;
   const names = { bed: '床', door: '大门', tower: '炮台', generator: '发电机', mine: '矿场', repair: '修复台', special: '特殊建筑' };
-  ctx.fillText((names[b.type] || '建筑') + ' Lv.' + b.level, cx, ty);
+  const name = b.type === 'special' ? b.specialName : (names[b.type] || '建筑');
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(14, Math.floor(18 * game.scale))}px Microsoft YaHei`;
+  ctx.fillText(name + ' Lv.' + b.level, cx, ty);
 
-  // 属性信息
-  ty += 30 * game.scale;
-  ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+  ty += 26 * game.scale;
+  ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
   ctx.fillStyle = '#bbb';
+  const lineH = 20 * Math.max(0.9, game.scale);
+
   if (b.type === 'bed') {
-    ctx.fillText('金币产出: ' + b.income + '/秒', cx, ty);
+    ctx.fillText('金币产出: ' + b.income + '/秒' + (game.player && game.player.inBed ? '（睡觉中）' : '（未上床）'), cx, ty);
   } else if (b.type === 'door') {
-    ctx.fillText('血量: ' + Math.floor(b.hp) + '/' + b.maxHp + '  等级: ' + b.level, cx, ty);
+    ctx.fillText('血量: ' + Math.floor(b.hp) + '/' + b.maxHp, cx, ty); ty += lineH;
+    ctx.fillText('自愈: ' + b.regen + '/秒', cx, ty);
   } else if (b.type === 'tower') {
-    ctx.fillText('攻击力: ' + Math.floor(b.atk) + '  范围: ' + Math.floor(b.range / game.scale), cx, ty);
-    ty += 22 * game.scale;
-    ctx.fillText('攻速: ' + b.speed.toFixed(1) + '秒', cx, ty);
+    ctx.fillText('攻击: ' + Math.floor(b.atk) + '  范围: ' + b.rangeCells.toFixed(1) + '格', cx, ty); ty += lineH;
+    ctx.fillText('攻击间隔: ' + b.interval.toFixed(2) + '秒', cx, ty);
   } else if (b.type === 'generator') {
-    ctx.fillText('电力产出: ' + b.output + '/秒', cx, ty);
+    ctx.fillText('能量产出: ' + formatRes(b.output) + '/秒', cx, ty);
   } else if (b.type === 'mine') {
-    ctx.fillText('金币产出: ' + b.income + '/秒  电力消耗: ' + b.powerCost + '/秒', cx, ty);
+    ctx.fillText('金币产出: ' + b.income + '/秒', cx, ty); ty += lineH;
+    ctx.fillText('拆除返还: ' + formatRes(refundOf(b).energy) + '能量', cx, ty);
+  } else if (b.type === 'repair') {
+    ctx.fillText('维修: 每秒恢复门最大血量' + b.pct + '%', cx, ty);
+  } else if (b.type === 'special') {
+    ctx.fillText(CONFIG.SPECIALS[b.specialKey].desc, cx, ty);
+  }
+
+  // 前置提示
+  ty += lineH + 6;
+  const prereq = prereqCheck(b);
+  const next = nextLevelData(b);
+  if (!prereq.ok) {
+    ctx.fillStyle = '#FF9800';
+    ctx.fillText('升级前置: ' + prereq.msg, cx, ty);
+  } else if (!next) {
+    ctx.fillStyle = '#777';
+    ctx.fillText(b.type === 'mine' || b.type === 'special' ? '该建筑不可升级' : '已满级', cx, ty);
+  } else {
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillText('升级费用: ' + costText(nextCostOf(b)), cx, ty);
+  }
+
+  // 按钮
+  const btnW = Math.min(140 * game.scale, (popW - 48) / 2);
+  const btnH = Math.max(34, 38 * game.scale);
+  const btnY = popY + popH - btnH - 16 * Math.max(0.9, game.scale);
+  game._popup = { close: null, upgrade: null, demolish: null, sleep: null };
+
+  if (isBed) {
+    // 上床/下床按钮（上方）
+    const sleepW = btnW * 2 + 8;
+    const sleepY = btnY - btnH - 8;
+    ctx.fillStyle = '#2196F3';
+    drawRoundRect(ctx, cx - sleepW / 2, sleepY, sleepW, btnH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.max(12, Math.floor(14 * game.scale))}px Microsoft YaHei`;
+    const inBed = game.player && game.player.inBed;
+    ctx.fillText(inBed ? '⬇ 下床' : '⬆ 上床睡觉', cx, sleepY + btnH / 2);
+    game._popup.sleep = { x: cx - sleepW / 2, y: sleepY, w: sleepW, h: btnH };
   }
 
   // 升级按钮
-  ty += 35 * game.scale;
-  const btnW = 120 * game.scale;
-  const btnH = 36 * game.scale;
-  const btnX = cx - btnW / 2;
-
-  const canUp = (b.type === 'bed' && b.canUpgrade()) ||
-                (b.type === 'tower' && b.canUpgrade()) ||
-                (b.type === 'generator' && b.canUpgrade()) ||
-                (b.type === 'door' && b.canUpgrade());
-  const upCost = b.upgradeCost;
-
-  if (canUp && upCost !== null) {
-    const canAfford = game.gold >= upCost;
+  const upX = cx - btnW - 4;
+  if (next && prereq.ok) {
+    const cost = nextCostOf(b);
+    const canAfford = game.gold >= (cost.gold || 0) && game.power >= (cost.energy || 0);
     ctx.fillStyle = canAfford ? '#4CAF50' : '#555';
-    drawRoundRect(ctx, btnX, ty, btnW, btnH, 6);
+    drawRoundRect(ctx, upX, btnY, btnW, btnH, 6);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText('升级 (' + upCost + '金)', cx, ty + btnH / 2);
-    game._upgradeBtn = { x: btnX, y: ty, w: btnW, h: btnH, building: b };
+    ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText('升级 ' + costText(cost), upX + btnW / 2, btnY + btnH / 2);
+    game._popup.upgrade = { x: upX, y: btnY, w: btnW, h: btnH, building: b };
   } else {
     ctx.fillStyle = '#333';
-    drawRoundRect(ctx, btnX, ty, btnW, btnH, 6);
+    drawRoundRect(ctx, upX, btnY, btnW, btnH, 6);
     ctx.fill();
     ctx.fillStyle = '#777';
-    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText('已满级', cx, ty + btnH / 2);
-    game._upgradeBtn = null;
+    ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(next ? '前置不足' : '不可升级', upX + btnW / 2, btnY + btnH / 2);
+  }
+
+  // 拆除按钮
+  const demolishable = b.type !== 'bed' && b.type !== 'door';
+  const dmX = cx + 4;
+  if (demolishable) {
+    const confirming = game.ui.demolishConfirm && game.ui.demolishConfirm.b === b
+      && (performance.now() - game.ui.demolishConfirm.t < 3000);
+    ctx.fillStyle = confirming ? '#c62828' : '#795548';
+    drawRoundRect(ctx, dmX, btnY, btnW, btnH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText(confirming ? '确认拆除?' : '拆除 ' + refundText(refundOf(b)), dmX + btnW / 2, btnY + btnH / 2);
+    game._popup.demolish = { x: dmX, y: btnY, w: btnW, h: btnH, building: b };
+  } else {
+    ctx.fillStyle = '#333';
+    drawRoundRect(ctx, dmX, btnY, btnW, btnH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#777';
+    ctx.font = `${Math.max(11, Math.floor(13 * game.scale))}px Microsoft YaHei`;
+    ctx.fillText('不可拆除', dmX + btnW / 2, btnY + btnH / 2);
   }
 
   // 关闭按钮
-  const closeBtnSize = 30 * game.scale;
+  const closeBtnSize = 30 * Math.max(0.9, game.scale);
   const closeX = popX + popW - closeBtnSize - 5;
   const closeY = popY + 5;
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -1821,117 +2006,113 @@ function renderInfoPopup(ctx) {
   ctx.arc(closeX + closeBtnSize / 2, closeY + closeBtnSize / 2, closeBtnSize / 2, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(12, Math.floor(16 * game.scale))}px Microsoft YaHei`;
   ctx.fillText('✕', closeX + closeBtnSize / 2, closeY + closeBtnSize / 2);
-  game._closePopupBtn = { x: closeX, y: closeY, w: closeBtnSize, h: closeBtnSize };
+  game._popup.close = { x: closeX, y: closeY, w: closeBtnSize, h: closeBtnSize };
 }
 
-/** 渲染商店弹窗 */
+/** 渲染特殊建筑商店 */
 function renderShopPopup(ctx) {
   const W = game.W, H = game.H;
-
-  // 遮罩
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(0, 0, W, H);
 
-  // 弹窗
-  const popW = Math.min(360 * game.scale, W * 0.9);
-  const popH = 400 * game.scale;
+  const popW = Math.min(360 * game.scale, W * 0.94);
+  const popH = Math.min(400 * game.scale, H * 0.86);
   const popX = W / 2 - popW / 2;
   const popY = H / 2 - popH / 2;
 
-  // 商店背景
-  if (game.images.ui_GAME_SHOP) {
-    ctx.drawImage(game.images.ui_GAME_SHOP, popX, popY, popW, popH);
+  if (IMG.ui_GAME_SHOP) {
+    ctx.drawImage(IMG.ui_GAME_SHOP, popX, popY, popW, popH);
   } else {
     ctx.fillStyle = 'rgba(20,20,40,0.95)';
     drawRoundRect(ctx, popX, popY, popW, popH, 12);
     ctx.fill();
   }
 
-  // 标题
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(15, Math.floor(20 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
-  ctx.fillText('特殊建筑商店', W / 2, popY + 30 * game.scale);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('特殊建筑商店', W / 2, popY + 28 * game.scale);
 
-  // 分类标签
   const tabs = [
     { key: 'defense', label: '防御' },
     { key: 'passive', label: '被动' },
     { key: 'attack', label: '攻击' },
   ];
   const tabW = popW / 3;
-  const tabY = popY + 50 * game.scale;
+  const tabY = popY + 48 * game.scale;
   game._shopTabs = [];
+  const tabFont = Math.max(11, Math.floor(14 * game.scale));
   tabs.forEach((tab, i) => {
     const tx = popX + i * tabW;
     const active = game.ui.shopTab === tab.key;
     ctx.fillStyle = active ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
     ctx.fillRect(tx, tabY, tabW, 30 * game.scale);
     ctx.fillStyle = active ? '#fff' : '#888';
-    ctx.font = `${Math.floor(14 * game.scale)}px Microsoft YaHei`;
+    ctx.font = `${tabFont}px Microsoft YaHei`;
     ctx.fillText(tab.label, tx + tabW / 2, tabY + 15 * game.scale);
     game._shopTabs.push({ x: tx, y: tabY, w: tabW, h: 30 * game.scale, key: tab.key });
   });
 
-  // 商品列表
   const listY = tabY + 40 * game.scale;
-  const itemH = 60 * game.scale;
+  const itemH = Math.max(48, 58 * game.scale);
   game._shopItems = [];
-  const specials = Object.entries(CONFIG.SPECIAL_BUILDINGS)
-    .filter(([_, v]) => v.category === game.ui.shopTab);
+  const specials = Object.entries(CONFIG.SPECIALS)
+    .filter(([, v]) => v.category === game.ui.shopTab);
+  const nameFont = Math.max(11, Math.floor(14 * game.scale));
+  const descFont = Math.max(9, Math.floor(11 * game.scale));
+  const btnFont = Math.max(10, Math.floor(12 * game.scale));
 
   specials.forEach(([key, data], i) => {
     const iy = listY + i * (itemH + 8 * game.scale);
     if (iy + itemH > popY + popH - 50 * game.scale) return;
 
-    const owned = !!game.specials[key];
+    const owned = hasSpecial(key);
     ctx.fillStyle = owned ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.05)';
     drawRoundRect(ctx, popX + 10 * game.scale, iy, popW - 20 * game.scale, itemH, 6);
     ctx.fill();
 
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.floor(14 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText(data.name, popX + 20 * game.scale, iy + 20 * game.scale);
+    ctx.font = `bold ${nameFont}px Microsoft YaHei`;
+    ctx.fillText(data.name, popX + 20 * game.scale, iy + itemH * 0.32);
     ctx.fillStyle = '#aaa';
-    ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
-    ctx.fillText(data.desc, popX + 20 * game.scale, iy + 40 * game.scale);
+    ctx.font = `${descFont}px Microsoft YaHei`;
+    ctx.fillText(data.desc, popX + 20 * game.scale, iy + itemH * 0.7);
 
-    // 购买按钮
-    const buyBtnW = 60 * game.scale;
-    const buyBtnH = 30 * game.scale;
-    const buyBtnX = popX + popW - 80 * game.scale;
+    const buyBtnW = Math.max(56, 66 * game.scale);
+    const buyBtnH = Math.max(30, itemH * 0.55);
+    const buyBtnX = popX + popW - buyBtnW - 16 * game.scale;
     const buyBtnY = iy + (itemH - buyBtnH) / 2;
 
+    ctx.textAlign = 'center';
     if (owned) {
       ctx.fillStyle = '#333';
       drawRoundRect(ctx, buyBtnX, buyBtnY, buyBtnW, buyBtnH, 4);
       ctx.fill();
       ctx.fillStyle = '#888';
-      ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
-      ctx.textAlign = 'center';
+      ctx.font = `${btnFont}px Microsoft YaHei`;
       ctx.fillText('已拥有', buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
     } else {
-      const canAfford = game.power >= data.cost;
+      const canAfford = game.power >= data.energy;
       ctx.fillStyle = canAfford ? '#4CAF50' : '#555';
       drawRoundRect(ctx, buyBtnX, buyBtnY, buyBtnW, buyBtnH, 4);
       ctx.fill();
       ctx.fillStyle = '#fff';
-      ctx.font = `${Math.floor(12 * game.scale)}px Microsoft YaHei`;
-      ctx.textAlign = 'center';
-      ctx.fillText(data.cost + '电', buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
+      ctx.font = `${btnFont}px Microsoft YaHei`;
+      ctx.fillText(formatRes(data.energy) + '能', buyBtnX + buyBtnW / 2, buyBtnY + buyBtnH / 2);
     }
 
     game._shopItems.push({
       x: buyBtnX, y: buyBtnY, w: buyBtnW, h: buyBtnH,
-      key, cost: data.cost, owned,
+      key, cost: data.energy, owned,
     });
   });
 
-  // 关闭按钮
-  const closeSize = 30 * game.scale;
+  const closeSize = 30 * Math.max(0.9, game.scale);
   const closeX = popX + popW - closeSize - 5;
   const closeY = popY + 5;
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -1939,8 +2120,9 @@ function renderShopPopup(ctx) {
   ctx.arc(closeX + closeSize / 2, closeY + closeSize / 2, closeSize / 2, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(12, Math.floor(16 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText('✕', closeX + closeSize / 2, closeY + closeSize / 2);
   game._shopCloseBtn = { x: closeX, y: closeY, w: closeSize, h: closeSize };
 }
@@ -1950,14 +2132,12 @@ function renderPaused(ctx) {
   const W = game.W, H = game.H;
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0, 0, W, H);
-
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(32 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(22, Math.floor(32 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('游戏暂停', W / 2, H * 0.35);
 
-  // 继续按钮
   const btnW = 180 * game.scale;
   const btnH = 50 * game.scale;
   const btnX = W / 2 - btnW / 2;
@@ -1966,11 +2146,10 @@ function renderPaused(ctx) {
   drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
   ctx.fillText('继续游戏', W / 2, btnY + btnH / 2);
   game._resumeBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 
-  // 返回主菜单
   const btn2Y = H * 0.6;
   ctx.fillStyle = '#c62828';
   drawRoundRect(ctx, btnX, btn2Y, btnW, btnH, 8);
@@ -1984,9 +2163,7 @@ function renderPaused(ctx) {
 function renderResult(ctx) {
   const W = game.W, H = game.H;
   const isWin = game.result === 'win';
-
-  // 背景
-  const bgImg = isWin ? game.images.ui_WIN_RESULT : game.images.ui_LOSE_RESULT;
+  const bgImg = isWin ? IMG.ui_WIN_RESULT : IMG.ui_LOSE_RESULT;
   if (bgImg) {
     ctx.drawImage(bgImg, 0, 0, W, H);
   } else {
@@ -1996,141 +2173,64 @@ function renderResult(ctx) {
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(0, 0, W, H);
 
-  // 结果文字
   ctx.fillStyle = isWin ? '#4CAF50' : '#F44336';
-  ctx.font = `bold ${Math.floor(36 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `bold ${Math.max(24, Math.floor(36 * game.scale))}px Microsoft YaHei`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(isWin ? '成功存活！' : '被猛鬼捕获...', W / 2, H * 0.25);
+  ctx.fillText(isWin ? '成功击退猛鬼！' : '被猛鬼捕获...', W / 2, H * 0.25);
 
-  // 统计
   ctx.fillStyle = '#ddd';
-  ctx.font = `${Math.floor(16 * game.scale)}px Microsoft YaHei`;
+  ctx.font = `${Math.max(13, Math.floor(16 * game.scale))}px Microsoft YaHei`;
   const stats = game.resultStats;
   const mins = Math.floor(stats.timeSurvived / 60);
   const secs = Math.floor(stats.timeSurvived % 60);
   ctx.fillText(`存活时间: ${mins}分${secs}秒`, W / 2, H * 0.4);
-  ctx.fillText(`击杀Boss: ${stats.bossesKilled}`, W / 2, H * 0.47);
-  ctx.fillText(`获得金币: ${formatNum(stats.goldEarned)}`, W / 2, H * 0.54);
+  ctx.fillText(`击杀猛鬼: ${stats.bossesKilled}`, W / 2, H * 0.47);
+  ctx.fillText(`累计金币: ${formatRes(stats.goldEarned)}`, W / 2, H * 0.54);
 
-  // 领取按钮
   const btnW = 180 * game.scale;
   const btnH = 50 * game.scale;
   const btnX = W / 2 - btnW / 2;
   const btnY = H * 0.68;
-
-  if (game.images.ui_CLAIM_BTN) {
-    ctx.drawImage(game.images.ui_CLAIM_BTN, btnX, btnY, btnW, btnH);
-  } else {
-    ctx.fillStyle = '#FF9800';
-    drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
-    ctx.fill();
-  }
+  ctx.fillStyle = '#FF9800';
+  drawRoundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.floor(20 * game.scale)}px Microsoft YaHei`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('领取奖励', W / 2, btnY + btnH / 2);
-  game._claimBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+  ctx.font = `bold ${Math.max(14, Math.floor(20 * game.scale))}px Microsoft YaHei`;
+  ctx.fillText('返回首页', W / 2, btnY + btnH / 2);
+  game._backBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
-// ========== UI系统 ==========
+// ========== 主渲染 ==========
 
-/** 判断点是否在矩形内 */
+function render() {
+  const ctx = game.ctx;
+  ctx.clearRect(0, 0, game.W, game.H);
+  switch (game.state) {
+    case STATE.MENU: renderMenu(ctx); break;
+    case STATE.SELECT_CHAR: renderSelectChar(ctx); break;
+    case STATE.SELECT_LEVEL: renderSelectLevel(ctx); break;
+    case STATE.PLAYING: renderPlaying(ctx); break;
+    case STATE.PAUSED: renderPlaying(ctx); renderPaused(ctx); break;
+    case STATE.RESULT: renderResult(ctx); break;
+  }
+}
+
+// ========== UI点击处理 ==========
+
 function hitTest(px, py, rect) {
   if (!rect) return false;
   return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
 }
 
-/** 判断格子是否可放置建筑 */
-function canPlaceAt(col, row) {
-  // 门的位置
-  if (col === 0 && row === 2) return false;
-  // 床的位置
-  if (col === 1 && row === 2) return false;
-  // 已有建筑
-  if (game.grid[row] && game.grid[row][col]) return false;
-  return true;
-}
-
-/** 放置建筑 */
-function placeBuilding(type, col, row) {
-  let building = null;
-  switch (type) {
-    case 'tower':
-      if (game.gold < CONFIG.TOWER_DATA[0].cost) {
-        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
-        return false;
-      }
-      game.gold -= CONFIG.TOWER_DATA[0].cost;
-      building = new Tower(col, row);
-      break;
-    case 'generator':
-      if (game.gold < CONFIG.GENERATOR_DATA[0].cost) {
-        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
-        return false;
-      }
-      game.gold -= CONFIG.GENERATOR_DATA[0].cost;
-      building = new Generator(col, row);
-      break;
-    case 'mine_0': case 'mine_1': case 'mine_2': case 'mine_3': {
-      const idx = parseInt(type.split('_')[1]);
-      const mineData = CONFIG.MINE_DATA[idx];
-      if (game.gold < mineData.cost) {
-        addFloatText(gridToX(col), gridToY(row), '金币不足!', '#F44336');
-        return false;
-      }
-      game.gold -= mineData.cost;
-      building = new Mine(col, row, idx);
-      break;
-    }
-    case 'repair':
-      if (game.power < CONFIG.REPAIR_COST) {
-        addFloatText(gridToX(col), gridToY(row), '电力不足!', '#F44336');
-        return false;
-      }
-      game.power -= CONFIG.REPAIR_COST;
-      building = new RepairStation(col, row);
-      game.specials.repair = true;
-      break;
-    default:
-      return false;
-  }
-
-  if (building) {
-    game.buildings.push(building);
-    game.grid[row][col] = building;
-    game.sfx.build();
-    addFloatText(gridToX(col), gridToY(row), '建造完成!', '#4CAF50');
-    addParticles(gridToX(col), gridToY(row), '#4CAF50', 8);
-    return true;
-  }
-  return false;
-}
-
-/** 处理点击/触摸事件 */
 function handleClick(px, py) {
-  game.sfx.resume();
-
   switch (game.state) {
-    case STATE.MENU:
-      handleMenuClick(px, py);
-      break;
-    case STATE.SELECT_CHAR:
-      handleCharSelectClick(px, py);
-      break;
-    case STATE.SELECT_LEVEL:
-      handleLevelSelectClick(px, py);
-      break;
-    case STATE.PLAYING:
-      handlePlayingClick(px, py);
-      break;
-    case STATE.PAUSED:
-      handlePausedClick(px, py);
-      break;
-    case STATE.RESULT:
-      handleResultClick(px, py);
-      break;
+    case STATE.MENU: handleMenuClick(px, py); break;
+    case STATE.SELECT_CHAR: handleCharSelectClick(px, py); break;
+    case STATE.SELECT_LEVEL: handleLevelSelectClick(px, py); break;
+    case STATE.PLAYING: handlePlayingClick(px, py); break;
+    case STATE.PAUSED: handlePausedClick(px, py); break;
+    case STATE.RESULT: handleResultClick(px, py); break;
   }
 }
 
@@ -2170,32 +2270,49 @@ function handleLevelSelectClick(px, py) {
 }
 
 function handlePlayingClick(px, py) {
-  // 关闭信息弹窗
+  // 信息弹窗（模态）
   if (game.ui.infoPopup) {
-    if (hitTest(px, py, game._closePopupBtn)) {
+    const b = game.ui.infoPopup;
+    const popup = game._popup || {};
+    if (hitTest(px, py, popup.close)) {
       game.ui.infoPopup = null;
+      game.ui.demolishConfirm = null;
       return;
     }
-    if (game._upgradeBtn && hitTest(px, py, game._upgradeBtn)) {
-      const b = game._upgradeBtn.building;
-      if (b.type === 'bed') b.upgrade();
-      else if (b.type === 'tower') b.upgrade();
-      else if (b.type === 'generator') b.upgrade();
-      else if (b.type === 'door') b.upgrade();
+    if (popup.sleep && hitTest(px, py, popup.sleep)) {
+      if (game.player) {
+        game.player.inBed = !game.player.inBed;
+        game.sfx.build();
+        addFloatText(game.player.col + 0.5, game.player.row, game.player.inBed ? '开始睡觉' : '已下床', '#2196F3');
+      }
+      return;
+    }
+    if (popup.upgrade && hitTest(px, py, popup.upgrade)) {
+      tryUpgradeBuilding(b);
+      return;
+    }
+    if (popup.demolish && hitTest(px, py, popup.demolish)) {
+      const confirming = game.ui.demolishConfirm && game.ui.demolishConfirm.b === b
+        && (performance.now() - game.ui.demolishConfirm.t < 3000);
+      if (confirming) {
+        tryDemolish(b);
+      } else {
+        game.ui.demolishConfirm = { b, t: performance.now() };
+      }
       return;
     }
     // 点击弹窗外关闭
     game.ui.infoPopup = null;
+    game.ui.demolishConfirm = null;
     return;
   }
 
-  // 商店弹窗
+  // 商店弹窗（模态）
   if (game.ui.shopOpen) {
     if (hitTest(px, py, game._shopCloseBtn)) {
       game.ui.shopOpen = false;
       return;
     }
-    // 标签切换
     if (game._shopTabs) {
       for (const tab of game._shopTabs) {
         if (hitTest(px, py, tab)) {
@@ -2204,17 +2321,23 @@ function handlePlayingClick(px, py) {
         }
       }
     }
-    // 购买商品
     if (game._shopItems) {
       for (const item of game._shopItems) {
-        if (hitTest(px, py, item) && !item.owned) {
-          if (game.power >= item.cost) {
-            game.power -= item.cost;
-            game.specials[item.key] = true;
-            game.sfx.upgrade();
-            addFloatText(game.W / 2, game.H / 2, '购买成功!', '#4CAF50');
-          } else {
-            addFloatText(game.W / 2, game.H / 2, '电力不足!', '#F44336');
+        if (hitTest(px, py, item)) {
+          if (!item.owned) {
+            if (!hasEmptyCell()) {
+              addFloatText(3.5, 1.2, '没有可放置的空格', '#F44336');
+              return;
+            }
+            if (game.power < item.cost) {
+              addFloatText(3.5, 1.2, '能量不足(需' + formatRes(item.cost) + ')', '#F44336');
+              return;
+            }
+            // 进入放置模式（放置时才扣费）
+            game.ui.shopOpen = false;
+            game.ui.selectedBuildType = 'special_' + item.key;
+            game.ui.hoverCell = null;
+            addFloatText(3.5, 1.2, '请点击绿色格子放置', '#4CAF50');
           }
           return;
         }
@@ -2223,9 +2346,25 @@ function handlePlayingClick(px, py) {
     return;
   }
 
-  // 暂停按钮
+  // 静音
+  if (hitTest(px, py, game._muteBtn)) {
+    game.muted = !game.muted;
+    game.sfx.muted = game.muted;
+    return;
+  }
+
+  // 暂停
   if (hitTest(px, py, game._pauseBtn)) {
     game.state = STATE.PAUSED;
+    return;
+  }
+
+  // 提前出怪
+  if (game._earlyBtn && hitTest(px, py, game._earlyBtn)) {
+    if (game.bossSpawnTimer > 3) {
+      spawnBoss();
+      game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
+    }
     return;
   }
 
@@ -2236,53 +2375,33 @@ function handlePlayingClick(px, py) {
         if (btn.type === 'shop') {
           game.ui.shopOpen = true;
           game.ui.selectedBuildType = null;
+          game.ui.hoverCell = null;
         } else {
           game.ui.selectedBuildType = game.ui.selectedBuildType === btn.type ? null : btn.type;
-          game.ui.selectedCell = null;
+          game.ui.hoverCell = null;
         }
         return;
       }
     }
   }
 
-  // 点击网格
+  // 网格点击
   const gridPos = posToGrid(px, py);
-  if (gridPos) {
-    const { col, row } = gridPos;
+  if (!gridPos) return;
+  const { col, row } = gridPos;
 
-    // 点击床 - 上床/下床
-    if (col === 1 && row === 2 && game.bed) {
-      game.player.inBed = !game.player.inBed;
-      game.sfx.build();
-      return;
-    }
+  // 已有建筑（含门/床）→ 打开信息弹窗
+  if (game.grid[row] && game.grid[row][col]) {
+    game.ui.infoPopup = game.grid[row][col];
+    game.ui.demolishConfirm = null;
+    game.ui.selectedBuildType = null;
+    game.ui.hoverCell = null;
+    return;
+  }
 
-    // 点击门 - 显示门信息
-    if (col === 0 && row === 2 && game.door) {
-      game.ui.infoPopup = game.door;
-      game.ui.selectedBuildType = null;
-      return;
-    }
-
-    // 已有建筑 - 显示信息
-    if (game.grid[row][col]) {
-      game.ui.infoPopup = game.grid[row][col];
-      game.ui.selectedBuildType = null;
-      return;
-    }
-
-    // 放置建筑
-    if (game.ui.selectedBuildType && canPlaceAt(col, row)) {
-      placeBuilding(game.ui.selectedBuildType, col, row);
-      game.ui.selectedBuildType = null;
-      game.ui.selectedCell = null;
-      return;
-    }
-
-    // 选中格子（建造模式）
-    if (game.ui.selectedBuildType) {
-      game.ui.selectedCell = { col, row };
-    }
+  // 放置建筑
+  if (game.ui.selectedBuildType) {
+    placeBuilding(game.ui.selectedBuildType, col, row);
   }
 }
 
@@ -2297,7 +2416,7 @@ function handlePausedClick(px, py) {
 }
 
 function handleResultClick(px, py) {
-  if (hitTest(px, py, game._claimBtn)) {
+  if (hitTest(px, py, game._backBtn)) {
     resetGame();
     game.state = STATE.MENU;
     game.sfx.build();
@@ -2306,208 +2425,177 @@ function handleResultClick(px, py) {
 
 // ========== 游戏主逻辑 ==========
 
-/** 初始化游戏 */
+/** 初始化单局 */
 function startGame() {
   resetGame();
   game.state = STATE.PLAYING;
 
-  // 初始化网格
+  // 网格
   game.grid = [];
   for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
     game.grid[r] = [];
-    for (let c = 0; c < CONFIG.GRID_COLS; c++) {
-      game.grid[r][c] = null;
-    }
+    for (let c = 0; c < CONFIG.GRID_COLS; c++) game.grid[r][c] = null;
   }
 
-  // 创建门
+  // 本关可建造格白名单
+  game.cells = new Set(CONFIG.LEVELS[game.levelIndex].cells.map(([c, r]) => c + ',' + r));
+
+  // 门（不可拆除）
   game.door = new Door();
   game.grid[2][0] = game.door;
 
-  // 创建床
+  // 床（不可拆除）
   game.bed = new Bed(1, 2);
   game.buildings.push(game.bed);
   game.grid[2][1] = game.bed;
 
-  // 创建玩家
+  // 玩家
   game.player = { col: 1, row: 2, inBed: true };
 
   game.lastTimestamp = performance.now();
 }
 
-/** 重置游戏数据 */
+/** 彻底重置单局状态 */
 function resetGame() {
   game.gold = CONFIG.INIT_GOLD;
   game.power = CONFIG.INIT_POWER;
   game.gameTime = 0;
-  game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
+  game.bossSpawnTimer = CONFIG.FIRST_BOSS_TIME;
   game.buildings = [];
   game.bosses = [];
   game.projectiles = [];
   game.floatTexts = [];
   game.particles = [];
   game.grid = [];
+  game.cells = new Set();
   game.door = null;
   game.bed = null;
   game.player = null;
-  game.specials = {};
+  game.flags = {};
   game.result = null;
+  game._winPending = false;
   game.resultStats = { bossesKilled: 0, timeSurvived: 0, goldEarned: 0 };
   game.ui = {
-    buildPanelOpen: false,
     selectedBuildType: null,
-    selectedCell: null,
+    hoverCell: null,
     infoPopup: null,
     shopOpen: false,
     shopTab: 'defense',
+    demolishConfirm: null,
   };
   game.shakeAmount = 0;
   game.shakeTimer = 0;
 }
 
-/** 生成Boss */
+/** 生成Boss（自然刷新与提前出怪共用同一入口） */
 function spawnBoss() {
-  const levelData = CONFIG.LEVELS[game.levelIndex];
-  const boss = new Boss(game.levelIndex, 0);
+  if (game.state !== STATE.PLAYING) return;
+  const boss = new Boss();
   game.bosses.push(boss);
-  addFloatText(boss.x, boss.y - 30, 'Boss出现!', '#F44336');
-  addParticles(boss.x, boss.y, '#F44336', 12);
+  addFloatText(0.2, 1.6, '猛鬼出现!', '#F44336');
+  addParticles(boss.lx, boss.ly, '#F44336', 12);
   game.sfx.ghost();
 }
 
-/** 更新资源产出 */
+/** 资源与维修结算（全部基于dt） */
 function updateResources(dt) {
   let goldIncome = 0;
   let powerIncome = 0;
-  let powerConsume = 0;
 
-  // 床产出（玩家在床上时才产出）
+  // 床：玩家在床上才产出
   if (game.bed && game.player && game.player.inBed) {
     goldIncome += game.bed.income;
   }
 
-  // 发电机产出电力
   for (const b of game.buildings) {
-    if (b.type === 'generator') {
-      powerIncome += b.output;
-    }
+    if (b.type === 'generator') powerIncome += b.output;
+    else if (b.type === 'mine') goldIncome += b.income; // 矿场按明细不持续耗电
   }
 
-  // 统计矿场电力消耗
-  for (const b of game.buildings) {
-    if (b.type === 'mine') {
-      powerConsume += b.powerCost;
-    }
-  }
-
-  // 应用电力产出
   game.power += powerIncome * dt;
-
-  // 电力充足时矿场才产出金币
-  const powerSufficient = game.power > 0 || powerIncome >= powerConsume;
-  if (powerSufficient) {
-    for (const b of game.buildings) {
-      if (b.type === 'mine') {
-        goldIncome += b.income;
-      }
-    }
-    game.power -= powerConsume * dt;
-  } else {
-    // 电力不足：矿场停工，仅消耗已有电力的一半
-    game.power -= powerConsume * dt * 0.5;
-  }
-
-  game.power = Math.max(0, game.power);
-
-  // 应用金币产出
   game.gold += goldIncome * dt;
   game.resultStats.goldEarned += goldIncome * dt;
+
+  // 修复台：按等级恢复门最大血量百分比
+  if (game.door && game.door.hp > 0) {
+    for (const b of game.buildings) {
+      if (b.type === 'repair') {
+        game.door.hp = Math.min(game.door.maxHp, game.door.hp + game.door.maxHp * (b.pct / 100) * dt);
+      }
+    }
+  }
 }
 
-/** 检查胜负条件 */
-function checkGameEnd() {
-  // 门被攻破 → 失败
-  if (game.door && game.door.hp <= 0) {
-    game.result = 'lose';
-    game.state = STATE.RESULT;
-    game.resultStats.timeSurvived = game.gameTime;
-    game.sfx.lose();
-  }
-  // 胜利条件已在Boss.takeDamage中处理：击杀撤退中的boss即获胜
+/** 唯一幂等终局入口：门毁优先于同帧Boss死亡 */
+function endGame(result) {
+  if (game.result) return;
+  game.result = result;
+  game.state = STATE.RESULT;
+  game.resultStats.timeSurvived = game.gameTime;
+  if (result === 'win') game.sfx.win();
+  else game.sfx.lose();
 }
 
 /** 主更新逻辑 */
 function update(dt) {
+  if (game.state === STATE.MENU) {
+    updateAtmosphere(dt);
+    return;
+  }
   if (game.state !== STATE.PLAYING) return;
 
   game.gameTime += dt;
-
-  // 动画帧
   game.animTimer += dt;
   game.animFrame = Math.floor(game.animTimer * 4);
 
-  // 准备期结束，开始刷Boss
-  if (game.gameTime >= CONFIG.PREPARE_TIME) {
-    game.bossSpawnTimer -= dt;
-    if (game.bossSpawnTimer <= 0) {
-      spawnBoss();
-      game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
-    }
+  // Boss刷新调度（首只=开局30秒，之后每30秒）
+  game.bossSpawnTimer -= dt;
+  if (game.bossSpawnTimer <= 0) {
+    spawnBoss();
+    game.bossSpawnTimer = CONFIG.BOSS_SPAWN_INTERVAL;
   }
 
-  // 更新资源
   updateResources(dt);
 
-  // 更新门
   if (game.door) game.door.update(dt);
 
-  // 更新建筑
   for (const b of game.buildings) {
     if (b.type === 'tower') b.update(dt);
   }
 
-  // 更新Boss
-  for (const boss of game.bosses) {
-    boss.update(dt);
-  }
+  for (const boss of game.bosses) boss.update(dt);
 
-  // 更新弹道
-  for (const p of game.projectiles) {
-    p.update(dt);
-  }
+  for (const p of game.projectiles) p.update(dt);
 
-  // 清理死亡实体（已死亡且不在回血状态的boss移除）
-  game.projectiles = game.projectiles.filter(p => !p.dead);
-  game.bosses = game.bosses.filter(b => !b.dead);
+  game.projectiles = game.projectiles.filter((p) => !p.dead);
+  game.bosses = game.bosses.filter((b) => !b.dead);
 
-  // 更新飘字
-  for (const ft of game.floatTexts) {
-    ft.update(dt);
-  }
-  game.floatTexts = game.floatTexts.filter(ft => ft.life > 0);
+  for (const ft of game.floatTexts) ft.update(dt);
+  game.floatTexts = game.floatTexts.filter((ft) => ft.life > 0);
 
-  // 更新粒子
-  for (const p of game.particles) {
-    p.update(dt);
-  }
-  game.particles = game.particles.filter(p => p.life > 0);
+  for (const p of game.particles) p.update(dt);
+  game.particles = game.particles.filter((p) => p.life > 0);
 
-  // 氛围效果
   updateAtmosphere(dt);
 
-  // 震动衰减
+  // 震动衰减（基于dt，帧率无关）
   if (game.shakeTimer > 0) {
     game.shakeTimer -= dt;
-    game.shakeAmount *= 0.9;
+    game.shakeAmount *= Math.exp(-5 * dt);
+    if (game.shakeAmount < 0.05) game.shakeAmount = 0;
   } else {
     game.shakeAmount = 0;
   }
 
-  // 检查胜负
-  checkGameEnd();
+  // 终局判定（每帧末尾统一处理，门毁优先）
+  if (game.door && game.door.hp <= 0) {
+    endGame('lose');
+  } else if (game._winPending) {
+    endGame('win');
+  }
 }
 
-/** 更新氛围效果 */
+/** 氛围效果（基于dt） */
 function updateAtmosphere(dt) {
   // 闪烁
   game.flickerTimer -= dt;
@@ -2515,42 +2603,41 @@ function updateAtmosphere(dt) {
     game.flickerAlpha = Math.random() > 0.7 ? 1 : 0;
     game.flickerTimer = randRange(2, 8);
   }
-  game.flickerAlpha *= 0.95;
+  game.flickerAlpha *= Math.exp(-2.5 * dt);
+  if (game.flickerAlpha < 0.02) game.flickerAlpha = 0;
 
   // 幽灵影子
   game.ghostTimer -= dt;
   if (game.ghostTimer <= 0) {
     game.ghostAlpha = Math.random() > 0.6 ? 1 : 0;
     if (game.ghostAlpha > 0) {
-      const area = getGameArea();
-      game.ghostX = randRange(area.areaX, area.areaX + area.areaW);
-      game.ghostY = randRange(area.areaY, area.areaY + area.areaH);
+      game.ghostLx = randRange(0, CONFIG.GRID_COLS);
+      game.ghostLy = randRange(0, CONFIG.GRID_ROWS);
     }
     game.ghostTimer = randRange(5, 15);
   }
-  game.ghostAlpha *= 0.97;
+  game.ghostAlpha *= Math.exp(-1.5 * dt);
+  if (game.ghostAlpha < 0.02) game.ghostAlpha = 0;
 
-  // Boss靠近时屏幕抖动
+  // Boss攻门时屏幕抖动
   for (const boss of game.bosses) {
-    if (!boss.dead && !boss.retreating && boss.isAttacking) {
+    if (!boss.dead && boss.isAttacking) {
       game.shakeAmount = Math.max(game.shakeAmount, 2);
-      game.shakeTimer = 0.1;
+      game.shakeTimer = Math.max(game.shakeTimer, 0.1);
     }
   }
 }
 
 // ========== 初始化与主循环 ==========
 
-/** 初始化Canvas */
 function initCanvas() {
   game.canvas = document.getElementById('gameCanvas');
   game.ctx = game.canvas.getContext('2d');
   resizeCanvas();
 }
 
-/** 响应式调整Canvas大小 */
 function resizeCanvas() {
-  game.dpr = window.devicePixelRatio || 1;
+  game.dpr = Math.min(window.devicePixelRatio || 1, 2); // 限制DPR保证性能
   game.W = window.innerWidth;
   game.H = window.innerHeight;
   game.canvas.width = game.W * game.dpr;
@@ -2558,44 +2645,15 @@ function resizeCanvas() {
   game.canvas.style.width = game.W + 'px';
   game.canvas.style.height = game.H + 'px';
   game.ctx.setTransform(game.dpr, 0, 0, game.dpr, 0, 0);
-  // 缩放因子，以800px宽度为基准
+  // 缩放因子只影响渲染尺寸；实体使用逻辑坐标，resize不会错位
   game.scale = Math.min(game.W, game.H) / 600;
 }
 
-/** 主渲染 */
-function render() {
-  const ctx = game.ctx;
-  ctx.clearRect(0, 0, game.W, game.H);
-
-  switch (game.state) {
-    case STATE.MENU:
-      renderMenu(ctx);
-      break;
-    case STATE.SELECT_CHAR:
-      renderSelectChar(ctx);
-      break;
-    case STATE.SELECT_LEVEL:
-      renderSelectLevel(ctx);
-      break;
-    case STATE.PLAYING:
-      renderPlaying(ctx);
-      break;
-    case STATE.PAUSED:
-      renderPlaying(ctx);
-      renderPaused(ctx);
-      break;
-    case STATE.RESULT:
-      renderResult(ctx);
-      break;
-  }
-}
-
-/** 游戏主循环 */
 function gameLoop(timestamp) {
   if (!game.lastTimestamp) game.lastTimestamp = timestamp;
   const rawDt = (timestamp - game.lastTimestamp) / 1000;
   game.lastTimestamp = timestamp;
-  const dt = Math.min(rawDt, 0.1); // 限制最大dt，避免切换状态时跳帧
+  const dt = Math.min(rawDt, 0.1); // 限制最大dt，避免后台恢复瞬间跳变
 
   update(dt);
   render();
@@ -2603,41 +2661,50 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-/** 绑定事件 */
+/** 统一Pointer输入：按下/抬起位移小于阈值才算点击，避免滑动误触 */
 function bindEvents() {
-  // 鼠标点击
-  game.canvas.addEventListener('click', (e) => {
-    e.preventDefault();
-    handleClick(e.clientX, e.clientY);
-  });
+  let pointerDown = null;
 
-  // 触摸事件
-  game.canvas.addEventListener('touchstart', (e) => {
+  game.canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (e.touches.length > 0) {
-      handleClick(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    game.sfx.resume(); // 首次交互解锁音频
+    pointerDown = { x: e.clientX, y: e.clientY };
   }, { passive: false });
 
-  // 窗口大小变化
-  window.addEventListener('resize', () => {
-    resizeCanvas();
+  game.canvas.addEventListener('pointermove', (e) => {
+    if (game.state === STATE.PLAYING) {
+      game.ui.hoverCell = posToGrid(e.clientX, e.clientY);
+    }
   });
+
+  game.canvas.addEventListener('pointerup', (e) => {
+    e.preventDefault();
+    if (!pointerDown) return;
+    const dx = e.clientX - pointerDown.x;
+    const dy = e.clientY - pointerDown.y;
+    if (dx * dx + dy * dy < 144) { // 12px内视为点击
+      handleClick(e.clientX, e.clientY);
+    }
+    pointerDown = null;
+  }, { passive: false });
+
+  game.canvas.addEventListener('pointercancel', () => {
+    pointerDown = null;
+  });
+
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
 }
 
 /** 启动游戏 */
 async function main() {
   initCanvas();
   bindEvents();
-
-  // 加载素材（不阻塞启动）
-  loadAllAssets();
-
+  preloadAssets(); // 预加载全部素材（不阻塞启动）
   game.lastTimestamp = performance.now();
   requestAnimationFrame(gameLoop);
 }
 
-// 启动
 main();
 </script>
 </body>
