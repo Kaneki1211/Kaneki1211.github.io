@@ -53,7 +53,14 @@ function removeDir(dir) {
   }
 }
 
-for (const dir of OWNED_DIRS) removeDir(path.join(root, dir))
+const SKIP_CLEAN = process.env.SKIP_POSTBUILD_CLEAN === '1'
+
+for (const dir of OWNED_DIRS) {
+  if (SKIP_CLEAN) continue
+  removeDir(path.join(root, dir))
+}
+
+if (SKIP_CLEAN) console.log('[postbuild] 已通过 SKIP_POSTBUILD_CLEAN 跳过旧产物清理')
 
 fs.cpSync(path.join(dist, 'assets'), path.join(root, 'assets'), { recursive: true })
 
