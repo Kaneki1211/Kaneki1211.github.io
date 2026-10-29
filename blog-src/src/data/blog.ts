@@ -526,12 +526,13 @@ export interface GameLink {
 }
 
 /** 仓库根目录里已有的独立页面，博客导航统一入口。
- *  href 必须带 .html：GitHub Pages 不做无扩展名重写，/eat 会 404，只有 /eat.html 可访问。 */
+ *  href 不带 .html。 */
 export const games: GameLink[] = [
-  { name: '干饭盲盒', desc: '今天吃什么，交给运气决定', href: 'eat.html', tag: '工具', emoji: '🍚' },
-  { name: '猛鬼宿舍 · 微恐塔防', desc: '守住宿舍，别让它们进来', href: 'tower-defense.html', tag: '游戏', emoji: '👻' },
-  { name: '婚礼请柬', desc: '一份会动的婚礼邀请函', href: 'wedding.html', tag: '页面', emoji: '💌' },
-  { name: '末日生存', desc: '资源、选择与活下去', href: 'apocalypse.html', tag: '游戏', emoji: '🌒' },
-  { name: '搭梯子', desc: '终于到达这里了', href: 'ladder.html', tag: '游戏', emoji: '🚩' },
-  { name: 'Aether 天气', desc: '把世界各地的此刻，收进口袋', href: 'aether-weather.html', tag: '工具', emoji: '🌤️' },
+  { name: 'AI 日报', desc: '今天 AI 圈发生了什么，一屏看完', href: 'ai-daily', tag: '简报', emoji: '📰' },
+  { name: '婚礼请柬', desc: '一份会动的婚礼邀请函', href: 'wedding', tag: '页面', emoji: '💌' },
+  { name: '干饭盲盒', desc: '今天吃什么，交给运气决定', href: 'eat', tag: '工具', emoji: '🍚' },
+  { name: '猛鬼宿舍 · 微恐塔防', desc: '守住宿舍，别让它们进来', href: 'tower-defense', tag: '游戏', emoji: '👻' },
+  { name: 'Aether 天气', desc: '把世界各地的此刻，收进口袋', href: 'aether-weather', tag: '工具', emoji: '🌤️' },
+  { name: '末日生存', desc: '资源、选择与活下去', href: 'apocalypse', tag: '游戏', emoji: '🌒' },
+  { name: '搭梯子', desc: '终于到达这里了', href: 'ladder', tag: '游戏', emoji: '🚩' },
 ]

@@ -1233,7 +1233,8 @@
             return true;
           });
         };
-        const mainCities = cleanList(saved.mainCities).slice(-MAX_MAIN);
+        // 主体列表按「新的在前」排列，超出上限时保留最前面的几条
+        const mainCities = cleanList(saved.mainCities).slice(0, MAX_MAIN);
         const savedCities = cleanList(saved.savedCities);
         const weatherCache = {};
         Object.entries(saved.weatherCache || {}).forEach(([id, weather]) => {
@@ -1575,14 +1576,15 @@
         showToast(`${city.name} 已在主体展示`, "↗");
         return;
       }
-      const replaced = state.mainCities.length >= MAX_MAIN ? state.mainCities.shift() : null;
-      state.mainCities.push({ ...city });
+      // 满员时替换：新城市插到头部（第一张卡），末尾那条移出，保证刚加的永远在最前面
+      const replaced = state.mainCities.length >= MAX_MAIN ? state.mainCities.pop() : null;
+      state.mainCities.unshift({ ...city });
       freshCards.add(city.id);
       saveState();
       render();
       loadCity(city.id);
       findCard(city.id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      showToast(replaced ? `已展示 ${city.name}，替换最早的 ${replaced.name}` : `已展示 ${city.name} 的实时天空`, "↗");
+      showToast(replaced ? `已展示 ${city.name}，替换掉 ${replaced.name}` : `已展示 ${city.name} 的实时天空`, "↗");
     }
 
     function addToList(city) {
