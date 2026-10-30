@@ -47,7 +47,7 @@ export default function GameModal({ game, onClose }: { game: GameLink; onClose: 
           </span>
           <div className="min-w-0 flex-1">
             <div className="font-bold t1 text-sm truncate">{game.name}</div>
-            <div className="text-[11px] t4 font-mono truncate">/{game.desc}</div>
+            <div className="text-[11px] t4 font-mono truncate">{game.desc}</div>
           </div>
 
           <a

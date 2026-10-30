@@ -58,3 +58,8 @@ git push origin main
 `gh-pages` 是产物分支，每次部署都会被整体覆盖。要改内容请改 `main` 上的源码，别直接动 `gh-pages`。
 
 也可以去 Actions 页面点一次 "Run workflow" 手动发布。
+
+> **Pages 发布源必须是 `Deploy from a branch` → `gh-pages` / `(root)`。**
+> 如果设置里被改成 `GitHub Actions`（仓库 pages 接口的 `build_type` 会变成 `workflow`），
+> 工作流推 `gh-pages` 会照常成功，但 Pages 根本不看这个分支，线上一直停在旧版 —— 表现为
+> 「Actions 全绿，页面没更新」。改回分支发布即可，不需要动 workflow。
