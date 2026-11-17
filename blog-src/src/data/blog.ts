@@ -528,8 +528,9 @@ export interface GameLink {
 /** 仓库根目录里已有的独立页面，博客导航统一入口。
  *  href 不带 .html。 */
 export const games: GameLink[] = [
+  { name: '几猫', desc: '港区里的 3A 大作', href: 'Saltline', tag: '游戏', emoji: '🐱' },
   { name: 'AI 日报', desc: '今天 AI 圈发生了什么，一屏看完', href: 'ai-daily', tag: '简报', emoji: '📰' },
-  { name: '婚礼请柬', desc: '一份会动的婚礼邀请函', href: 'wedding', tag: '页面', emoji: '💌' },
+  // { name: '婚礼请柬', desc: '一份会动的婚礼邀请函', href: 'wedding', tag: '页面', emoji: '💌' },
   { name: '干饭盲盒', desc: '今天吃什么，交给运气决定', href: 'eat', tag: '工具', emoji: '🍚' },
   { name: '猛鬼宿舍 · 微恐塔防', desc: '守住宿舍，别让它们进来', href: 'tower-defense', tag: '游戏', emoji: '👻' },
   { name: 'Aether 天气', desc: '把世界各地的此刻，收进口袋', href: 'aether-weather', tag: '工具', emoji: '🌤️' },
